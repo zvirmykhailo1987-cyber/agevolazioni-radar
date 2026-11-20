@@ -299,12 +299,11 @@ def test_diagnostic_eval_leaves_the_store_as_shipped():
 def test_every_static_file_ships_in_the_package(tmp_path):
     """The Docker image installs the wheel, not the source tree: a static file missing from
     package-data is a 404 in production only (it happened with the fonts)."""
+    import shutil
     import subprocess
     import sys
     import zipfile
     from pathlib import Path
-
-    import shutil
 
     root = Path(__file__).resolve().parents[1]
     clean = tmp_path / "src-copy"  # like the Docker build: no egg-info left by an editable install

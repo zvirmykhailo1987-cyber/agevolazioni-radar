@@ -584,7 +584,9 @@ def create_app(store: Store | None = None, llm: Answerer | None = None, state: A
         for f in rep.findings:
             by_hire.setdefault(f.hire_id, []).append(f)
         current = rep.effective(rejected)
-        decided = sum(1 for f in current if f.finding_id in reviews)
+        # a hire counts as decided once any of its findings has a decision (a rejection is a decision too)
+        hires_with_findings = {f.hire_id for f in rep.findings}
+        decided = len({f.hire_id for f in rep.findings if f.finding_id in reviews})
         return page(
             request,
             "recupero.html",
@@ -593,6 +595,7 @@ def create_app(store: Store | None = None, llm: Answerer | None = None, state: A
             queue=work_queue(current),
             current_ids={f.finding_id for f in current},
             decided=decided,
+            hires_with_findings=len(hires_with_findings),
             totals=rep.totals(rejected),
             by_hire=by_hire,
             rate=r,

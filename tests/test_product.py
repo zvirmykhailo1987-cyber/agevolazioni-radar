@@ -69,7 +69,16 @@ def test_sign_in_review_and_audit(client):
         follow_redirects=False,
     )
     assert r.status_code == 303
-    assert "approvata da consulente" in client.get("/recupero/trattoria-puglia").text
+    page = client.get("/recupero/trattoria-puglia").text
+    assert "approvata da consulente" in page
+    assert re.search(r"<b>1<span class=\"muted\"> / \d+</span></b><span>assunzioni con decisione", page)
+    r = client.post(  # a rejection is a decision too: the counter must not go back to 0
+        "/recupero/trattoria-puglia/decisione",
+        data={"finding_id": fid, "decision": "respinta", "note": "", "csrf": csrf},
+        follow_redirects=False,
+    )
+    page = client.get("/recupero/trattoria-puglia").text
+    assert re.search(r"<b>1<span class=\"muted\"> / \d+</span></b><span>assunzioni con decisione", page)
     status = client.get("/stato").text
     assert "visto estratto" in status and "Registro delle decisioni" in status
     bad = client.post(

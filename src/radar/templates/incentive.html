@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ rule.name }} · Agevolazioni Radar{% endblock %}
+{% block content %}
+<p class="crumb"><a href="/">Incentivi</a> / {{ rule.incentive_id }}</p>
+<h1>{{ rule.name }}</h1>
+<p class="muted">Introdotto da <a href="{{ meta.url }}" rel="noopener" target="_blank">{{ meta.label }}</a>{% if meta.sources|length > 1 %} · aggiornato da {% for s in meta.sources[1:] %}<a href="{{ s.url }}" rel="noopener" target="_blank">{{ s.doc_type }} n. {{ s.number }}</a>{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}</p>
+{% if meta.differences %}<div class="notice" role="note"><strong>Differenze tra atti da verificare</strong> (non applicate automaticamente):
+  <ul>{% for c in meta.differences %}<li>{{ labels.get(c.field, c.field) }}: {{ c.kept_in }}: {{ c.kept | fmt }} · {{ c.other_in }}: {{ c.other | fmt }}{% if c.other_citation %} <span class="anchor">§{{ c.other_citation.anchor }}</span>{% endif %}</li>{% endfor %}</ul></div>{% endif %}
+<div class="tablewrap" data-state="{{ 'partial' if rows|selectattr('status', 'ne', 'verified')|list else 'complete' }}">
+<table class="rule">
+  <thead><tr><th scope="col">Campo</th><th scope="col">Valore</th><th scope="col">Stato</th><th scope="col">Dal testo</th><th scope="col">Atto</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr class="st-{{ r.status }}">
+      <th scope="row">{{ r.label }}</th>
+      <td>{% if r.value is none %}<span class="muted">—</span>{% else %}{{ r.value | fmt }}{% endif %}</td>
+      <td><span class="b {{ {'verified':'ok','unverified':'warn','absent':'off'}[r.status] }}">{{ {'verified':'verificato','unverified':'scartato','absent':'non indicato'}[r.status] }}</span></td>
+      <td>{% if r.citation %}<q>{{ r.citation.quote }}</q> <span class="anchor">§{{ r.citation.anchor }}</span>{% endif %}</td>
+      <td>{% set s = meta.field_sources.get(r.field) %}{% if s %}<a href="{{ s.url }}" rel="noopener" target="_blank" class="small nowrap">{{ s.short }}</a>{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="muted small">Dati parziali: i campi «non indicato» non compaiono negli atti letti e vanno verificati. «Scartato»: il modello ha indicato un valore ma la frase citata non compare nel paragrafo; il valore non viene usato.</p>
+{% endblock %}

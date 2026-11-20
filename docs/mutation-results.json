@@ -1,0 +1,151 @@
+{
+  "measured": "2026-11-20",
+  "bugs_injected": 24,
+  "caught": 24,
+  "results": [
+    {
+      "bug": "Citation gate accepts a value whose quote is not in the paragraph",
+      "file": "src/radar/rules.py",
+      "caught": true,
+      "caught_by": "tests/test_rules_extract.py::test_gate_keeps_grounded_values_and_drops_invented_ones"
+    },
+    {
+      "bug": "Citation gate accepts a quote that does not state the value",
+      "file": "src/radar/rules.py",
+      "caught": true,
+      "caught_by": "tests/test_rules_extract.py::test_quote_without_the_value_is_unverified"
+    },
+    {
+      "bug": "Quotes shorter than four words accepted",
+      "file": "src/radar/text.py",
+      "caught": true,
+      "caught_by": "tests/test_rules_extract.py::test_gate_requires_whole_words_and_the_value_in_the_quote"
+    },
+    {
+      "bug": "Quote matched inside words (1 inside 10)",
+      "file": "src/radar/text.py",
+      "caught": true,
+      "caught_by": "tests/test_rules_extract.py::test_gate_requires_whole_words_and_the_value_in_the_quote"
+    },
+    {
+      "bug": "Answer keeps citations the gate could not verify",
+      "file": "src/radar/rag.py",
+      "caught": true,
+      "caught_by": "tests/test_rag.py::test_unverifiable_citation_turns_answer_into_refusal"
+    },
+    {
+      "bug": "Invented number next to a real quote is shown",
+      "file": "src/radar/rag.py",
+      "caught": true,
+      "caught_by": "tests/test_rag.py::test_invented_number_next_to_a_real_quote_is_refused"
+    },
+    {
+      "bug": "Answer is shown even with no verified citation",
+      "file": "src/radar/rag.py",
+      "caught": true,
+      "caught_by": "tests/test_rag.py::test_unverifiable_citation_turns_answer_into_refusal"
+    },
+    {
+      "bug": "Worker who turned 35 on the hiring day passes the under-35 check",
+      "file": "src/radar/eligibility.py",
+      "caught": true,
+      "caught_by": "tests/test_eligibility.py::test_age_boundary_turning_35_on_hire_day_fails"
+    },
+    {
+      "bug": "Missing unemployment data counts as 'no'",
+      "file": "src/radar/eligibility.py",
+      "caught": true,
+      "caught_by": "tests/test_eligibility.py::test_missing_data_is_unknown_never_no"
+    },
+    {
+      "bug": "Unknown criteria are reported as eligible",
+      "file": "src/radar/eligibility.py",
+      "caught": true,
+      "caught_by": "tests/test_eligibility.py::test_missing_data_is_unknown_never_no"
+    },
+    {
+      "bug": "Ungrounded condition treated as passed in the pre-check",
+      "file": "src/radar/eligibility.py",
+      "caught": true,
+      "caught_by": "tests/test_eligibility.py::test_unverified_condition_and_pending_differences_fail_closed"
+    },
+    {
+      "bug": "ZES cap ignored for hires in a ZES region",
+      "file": "src/radar/eligibility.py",
+      "caught": true,
+      "caught_by": "tests/test_eligibility.py::test_zes_rule_checks_region_size_and_uses_zes_cap"
+    },
+    {
+      "bug": "Publication dates computed in UTC (one day early)",
+      "file": "src/radar/inps_source.py",
+      "caught": true,
+      "caught_by": "tests/test_inps_source.py::test_publication_date_uses_rome_time_not_utc"
+    },
+    {
+      "bug": "Listing keeps paging past the cut-off date",
+      "file": "src/radar/inps_source.py",
+      "caught": true,
+      "caught_by": "tests/test_inps_source.py::test_listing_stops_at_cutoff_and_pages_forward"
+    },
+    {
+      "bug": "Relevance filter forgets ZES acts",
+      "file": "src/radar/inps_source.py",
+      "caught": true,
+      "caught_by": "tests/test_inps_source.py::test_relevance_filter[Istruzioni"
+    },
+    {
+      "bug": "Client errors (404) are retried like outages",
+      "file": "src/radar/inps_source.py",
+      "caught": true,
+      "caught_by": "tests/test_inps_source.py::test_client_errors_are_not_retried"
+    },
+    {
+      "bug": "Polite delay between requests removed",
+      "file": "src/radar/inps_source.py",
+      "caught": true,
+      "caught_by": "tests/test_inps_source.py::test_polite_delay_between_requests"
+    },
+    {
+      "bug": "Unchanged text stored again as a new version",
+      "file": "src/radar/inps_source.py",
+      "caught": true,
+      "caught_by": "tests/test_kb_store.py::test_corrected_act_becomes_a_new_version_end_to_end"
+    },
+    {
+      "bug": "Table of contents parsed as content",
+      "file": "src/radar/text.py",
+      "caught": true,
+      "caught_by": "tests/test_text.py::test_paragraphs_are_anchored_to_bold_numbered_sections"
+    },
+    {
+      "bug": "Extraction cache ignored (pays the API again on every run)",
+      "file": "src/radar/kb.py",
+      "caught": true,
+      "caught_by": "tests/test_kb_store.py::test_extraction_is_cached_by_hash_prompt_and_model"
+    },
+    {
+      "bug": "Same-day message outranks the circular that introduced the incentive",
+      "file": "src/radar/consolidate.py",
+      "caught": true,
+      "caught_by": "tests/test_consolidate.py::test_circular_is_primary_over_same_day_message_with_lower_number"
+    },
+    {
+      "bug": "Per-IP limit on paid questions removed",
+      "file": "src/radar/web.py",
+      "caught": true,
+      "caught_by": "tests/test_web_mcp_evals.py::test_rate_limiter_per_ip_and_daily"
+    },
+    {
+      "bug": "Per-IP daily cap removed",
+      "file": "src/radar/web.py",
+      "caught": true,
+      "caught_by": "tests/test_web_mcp_evals.py::test_rate_limiter_per_ip_daily_cap_and_bounded_memory"
+    },
+    {
+      "bug": "Content-Security-Policy header dropped",
+      "file": "src/radar/web.py",
+      "caught": true,
+      "caught_by": "tests/test_web_mcp_evals.py::test_pages_render_and_carry_security_headers"
+    }
+  ]
+}

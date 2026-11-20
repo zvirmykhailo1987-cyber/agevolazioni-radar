@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <h1>Incentivi all'assunzione, letti dalla fonte</h1>
+  <p class="lead">Ogni giorno la pipeline legge le circolari e i messaggi INPS, versiona i testi e ne estrae le regole.
+  Ogni valore porta con sé il paragrafo e la frase esatta da cui è stato letto: se la frase non c'è, il valore viene scartato.</p>
+</section>
+
+<section class="grid3" aria-label="Stato">
+  <div class="stat"><span class="k">Atti INPS scansionati</span><span class="v">{{ fresh.acts_scanned }}</span></div>
+  <div class="stat"><span class="k">Atti su incentivi</span><span class="v">{{ fresh.incentive_acts }}</span></div>
+  <div class="stat"><span class="k">Giorni dall'ultimo atto</span><span class="v">{{ fresh.days_since_latest_act if fresh.days_since_latest_act is not none else 'n/d' }}</span></div>
+</section>
+
+{% if ev %}
+<section class="card">
+  <h2>Qualità misurata</h2>
+  <p class="muted">Ultima valutazione automatica: {{ ev.at[:10] | fmt }} · {{ ev.qa.summary.n_answerable }} domande con risposta nota, {{ ev.qa.summary.n_unanswerable }} senza.</p>
+  {% set rows = [('Fatti corretti nella risposta', ev.qa.summary.fact_recall), ('Il paragrafo citato contiene i fatti', ev.qa.summary.citation_supports or 0), ('Rifiuto quando la fonte tace', ev.qa.summary.refused_when_unanswerable), ('Campi delle regole estratti correttamente', ev.extraction.field_accuracy)] %}
+  <svg class="chart" viewBox="0 0 360 {{ 34 + rows|length * 46 }}" role="img" aria-labelledby="chart-t">
+    <title id="chart-t">Risultati della valutazione automatica, in percentuale</title>
+    {% for t in [0, 50, 100] %}
+    {% for _ in rows %}<line class="grid" x1="{{ 8 + t * 3.0 }}" x2="{{ 8 + t * 3.0 }}" y1="{{ 26 + loop.index0 * 46 }}" y2="{{ 46 + loop.index0 * 46 }}"/>{% endfor %}
+    <text class="tick" x="{{ 8 + t * 3.0 }}" y="{{ 28 + rows|length * 46 }}" text-anchor="middle">{{ t }}%</text>
+    {% endfor %}
+    {% for label, v in rows %}
+    {% set y = 10 + loop.index0 * 46 %}
+    <text class="lbl" x="8" y="{{ y + 12 }}">{{ label }}</text>
+    <rect class="bar-bg" x="8" y="{{ y + 20 }}" width="300" height="12" rx="6"/>
+    <rect class="bar-fg" x="8" y="{{ y + 20 }}" width="{{ '%.1f' % (v * 300) }}" height="12" rx="6"/>
+    <text class="val" x="352" y="{{ y + 31 }}" text-anchor="end">{{ '%.0f' % (v * 100) }}%</text>
+    {% endfor %}
+  </svg>
+</section>
+{% endif %}
+
+<section>
+  <h2>Incentivi estratti</h2>
+  {% if not incentives %}<p class="empty">Nessun incentivo estratto: eseguire la fase di estrazione.</p>{% endif %}
+  <ul class="list">
+  {% for i in incentives %}
+    <li class="row">
+      <div>
+        <a class="title" href="/incentivo/{{ i.incentive_id }}">{{ i.name }}</a>
+        <p class="muted">{{ i.source }}{% if i.sources|length > 1 %} · +{{ i.sources|length - 1 }} {{ 'atto' if i.sources|length == 2 else 'atti' }} successivi{% endif %}{% if i.differences %} · <strong>{{ i.differences }} da verificare</strong>{% endif %}</p>
+      </div>
+      <div class="badges" aria-label="Campi">
+        <span class="b ok">{{ i.fields.verified }} verificati</span>
+        {% if i.fields.unverified %}<span class="b warn">{{ i.fields.unverified }} scartati</span>{% endif %}
+        <span class="b off">{{ i.fields.absent }} non indicati</span>
+      </div>
+    </li>
+  {% endfor %}
+  </ul>
+</section>
+{% endblock %}

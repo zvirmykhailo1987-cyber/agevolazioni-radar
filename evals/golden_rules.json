@@ -1,0 +1,65 @@
+{
+  "version": "2026-11-20",
+  "note": "Expected values for the main incentive of each circular, read by hand from circulars 55/56/57 of 14/05/2026 (section 1). A field missing here is not scored. null = the field must be absent (the circular does not restrict it).",
+  "rules": [
+    {
+      "circular": "55",
+      "match": "giovani",
+      "expect": {
+        "exemption_percent": 100,
+        "monthly_cap_eur": 500,
+        "monthly_cap_eur_zes": 650,
+        "max_duration_months": 24,
+        "worker_max_age_exclusive": 35,
+        "min_months_without_regular_job": 24,
+        "requires_net_job_increase": true,
+        "hire_from": "2026-01-01",
+        "hire_to": "2026-12-31",
+        "worker_gender": null
+      }
+    },
+    {
+      "circular": "56",
+      "match": "zes",
+      "expect": {
+        "exemption_percent": 100,
+        "monthly_cap_eur": 650,
+        "worker_min_age": 35,
+        "min_months_without_regular_job": 24,
+        "employer_max_employees": 10,
+        "only_zes_regions": true,
+        "zes_regions": [
+          "Abruzzo",
+          "Basilicata",
+          "Calabria",
+          "Campania",
+          "Marche",
+          "Molise",
+          "Puglia",
+          "Sicilia",
+          "Sardegna",
+          "Umbria"
+        ],
+        "hire_from": "2026-01-01",
+        "hire_to": "2026-12-31",
+        "contract_types": [
+          "tempo_indeterminato",
+          "somministrazione"
+        ],
+        "worker_gender": null
+      }
+    },
+    {
+      "circular": "57",
+      "match": "donne",
+      "expect": {
+        "exemption_percent": 100,
+        "monthly_cap_eur": 650,
+        "monthly_cap_eur_zes": 800,
+        "worker_gender": "donna",
+        "min_months_without_regular_job": 24,
+        "requires_net_job_increase": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,521 @@
+{
+  "version": "2026-11-20",
+  "note": "Hand-written from INPS circulars 55, 56, 57 of 14/05/2026. 'must_include' are facts the answer has to state; 'gold' lists acceptable (circular number, anchor) citations. Unanswerable items must be refused. 'split': dev items were used while tuning retrieval and the prompt; holdout items were written afterwards from circulars 72 and 82 and never used for tuning. Matching is on whole words (prefix for words of 5+ letters).",
+  "items": [
+    {
+      "id": "g01",
+      "q": "Qual è la percentuale di esonero contributivo del Bonus Giovani 2026?",
+      "must_include": [
+        "100"
+      ],
+      "gold": [
+        [
+          "55",
+          "1.p1"
+        ],
+        [
+          "55",
+          "1.p13"
+        ]
+      ],
+      "split": "dev"
+    },
+    {
+      "id": "g02",
+      "q": "Qual è il limite massimo mensile del Bonus Giovani per ciascun lavoratore?",
+      "must_include": [
+        "500"
+      ],
+      "gold": [
+        [
+          "55",
+          "1.p13"
+        ]
+      ],
+      "split": "dev"
+    },
+    {
+      "id": "g03",
+      "q": "Di quanto aumenta il limite mensile del Bonus Giovani se il giovane è assunto in una sede nelle regioni della ZES unica?",
+      "must_include": [
+        "650"
+      ],
+      "gold": [
+        [
+          "55",
+          "1.p14"
+        ]
+      ],
+      "split": "dev"
+    },
+    {
+      "id": "g04",
+      "q": "Per quanti mesi al massimo spetta il Bonus Giovani per i giovani privi di impiego regolarmente retribuito da almeno ventiquattro mesi?",
+      "must_include": [
+        "ventiquattro|24"
+      ],
+      "gold": [
+        [
+          "55",
+          "1.p3"
+        ]
+      ],
+      "split": "dev"
+    },
+    {
+      "id": "g05",
+      "q": "Quale età non deve aver compiuto il giovane alla data dell'assunzione per il Bonus Giovani?",
+      "must_include": [
+        "35|trentacinque"
+      ],
+      "gold": [
+        [
+          "55",
+          "1.p3"
+        ],
+        [
+          "55",
+          "1.p4"
+        ]
+      ],
+      "split": "dev"
+    },
+    {
+      "id": "g06",
+      "q": "Il Bonus Giovani spetta per i rapporti di apprendistato?",
+      "must_include": [
+        "esclus|non spetta|no"
+      ],
+      "gold": [
+        [
+          "55",
+          "1.p2"
+        ]
+      ],
+      "split": "dev"
+    },
+    {
+      "id": "g07",
+      "q": "Il Bonus Giovani copre anche i premi e contributi INAIL?",
+      "must_include": [
+        "esclus|non spetta|no"
+      ],
+      "gold": [
+        [
+          "55",
+          "1.p13"
+        ]
+      ],
+      "split": "dev"
+    },
+    {
+      "id": "g08",
+      "q": "Quale decreto-legge ha introdotto il Bonus Giovani 2026?",
+      "must_include": [
+        "62"
+      ],
+      "gold": [
+        [
+          "55",
+          "1.p1"
+        ]
+      ],
+      "split": "dev"
+    },
+    {
+      "id": "g09",
+      "q": "Il riconoscimento del Bonus Giovani è subordinato all'incremento occupazionale netto?",
+      "must_include": [
+        "incremento occupazionale netto"
+      ],
+      "gold": [
+        [
+          "55",
+          "1.p12"
+        ]
+      ],
+      "split": "dev"
+    },
+    {
+      "id": "g10",
+      "q": "Quali regioni rientrano nella ZES unica secondo la circolare sul Bonus ZES?",
+      "must_include": [
+        "Abruzzo",
+        "Marche",
+        "Umbria",
+        "Sardegna"
+      ],
+      "gold": [
+        [
+          "56",
+          "1.p3"
+        ]
+      ],
+      "split": "dev"
+    },
+    {
+      "id": "g11",
+      "q": "Quanti dipendenti può occupare al massimo il datore di lavoro per accedere al Bonus ZES?",
+      "must_include": [
+        "10|dieci"
+      ],
+      "gold": [
+        [
+          "56",
+          "1.p4"
+        ]
+      ],
+      "split": "dev"
+    },
+    {
+      "id": "g12",
+      "q": "Che età deve avere il lavoratore assunto con il Bonus ZES?",
+      "must_include": [
+        "35|trentacinque"
+      ],
+      "gold": [
+        [
+          "56",
+          "1.p5"
+        ]
+      ],
+      "split": "dev"
+    },
+    {
+      "id": "g13",
+      "q": "Da quanto tempo deve essere disoccupato il lavoratore per il Bonus ZES?",
+      "must_include": [
+        "ventiquattro|24"
+      ],
+      "gold": [
+        [
+          "56",
+          "1.p5"
+        ]
+      ],
+      "split": "dev"
+    },
+    {
+      "id": "g14",
+      "q": "Qual è il limite massimo mensile dell'esonero del Bonus ZES?",
+      "must_include": [
+        "650"
+      ],
+      "gold": [
+        [
+          "56",
+          "1.p6"
+        ]
+      ],
+      "split": "dev"
+    },
+    {
+      "id": "g15",
+      "q": "Il Bonus ZES può riguardare personale dirigenziale?",
+      "must_include": [
+        "non dirigenzial|no"
+      ],
+      "gold": [
+        [
+          "56",
+          "1.p5"
+        ]
+      ],
+      "split": "dev"
+    },
+    {
+      "id": "g16",
+      "q": "Il Bonus Donne è riservato a una fascia di età?",
+      "must_include": [
+        "qualsiasi età|no"
+      ],
+      "gold": [
+        [
+          "57",
+          "1.p3"
+        ]
+      ],
+      "split": "dev"
+    },
+    {
+      "id": "g17",
+      "q": "Da quanto tempo devono essere prive di impiego regolarmente retribuito le donne per il Bonus Donne, nel caso generale?",
+      "must_include": [
+        "ventiquattro|24"
+      ],
+      "gold": [
+        [
+          "57",
+          "1.p3"
+        ]
+      ],
+      "split": "dev"
+    },
+    {
+      "id": "g18",
+      "q": "Qual è il limite massimo mensile del Bonus Donne per ciascuna lavoratrice?",
+      "must_include": [
+        "650"
+      ],
+      "gold": [
+        [
+          "57",
+          "1.p14"
+        ]
+      ],
+      "split": "dev"
+    },
+    {
+      "id": "g19",
+      "q": "Quanto vale al massimo il Bonus Donne al mese per una lavoratrice residente nelle regioni della ZES unica?",
+      "must_include": [
+        "800"
+      ],
+      "gold": [
+        [
+          "57",
+          "1.p15"
+        ]
+      ],
+      "split": "dev"
+    },
+    {
+      "id": "g20",
+      "q": "Il Bonus Donne spetta per il lavoro domestico?",
+      "must_include": [
+        "esclus|non spetta|no"
+      ],
+      "gold": [
+        [
+          "57",
+          "1.p2"
+        ]
+      ],
+      "split": "dev"
+    },
+    {
+      "id": "g21",
+      "q": "Per il Bonus Donne, quale fascia di età indica la lettera b) della definizione di lavoratore svantaggiato?",
+      "must_include": [
+        "15",
+        "24"
+      ],
+      "gold": [
+        [
+          "57",
+          "1.p5"
+        ]
+      ],
+      "split": "dev"
+    },
+    {
+      "id": "g22",
+      "q": "Il Bonus Donne richiede l'incremento occupazionale netto?",
+      "must_include": [
+        "incremento occupazionale netto"
+      ],
+      "gold": [
+        [
+          "57",
+          "1.p13"
+        ]
+      ],
+      "split": "dev"
+    },
+    {
+      "id": "g23",
+      "q": "Quale regolamento UE deve essere rispettato per il Bonus Donne?",
+      "must_include": [
+        "651/2014"
+      ],
+      "gold": [
+        [
+          "57",
+          "1.p16"
+        ],
+        [
+          "57",
+          "1.p4"
+        ]
+      ],
+      "split": "dev"
+    },
+    {
+      "id": "g24",
+      "q": "In quale periodo devono avvenire le assunzioni nella ZES unica per avere il Bonus Giovani maggiorato?",
+      "must_include": [
+        "31 dicembre 2026"
+      ],
+      "gold": [
+        [
+          "55",
+          "1.p9"
+        ]
+      ],
+      "split": "dev"
+    },
+    {
+      "id": "u01",
+      "q": "Qual è l'importo del bonus assunzioni per la Lombardia nel 2027?",
+      "unanswerable": true,
+      "split": "dev"
+    },
+    {
+      "id": "u02",
+      "q": "Quanto costa l'abbonamento mensile a un software di payroll?",
+      "unanswerable": true,
+      "split": "dev"
+    },
+    {
+      "id": "u03",
+      "q": "Qual è l'aliquota IRPEF per un reddito di 40.000 euro?",
+      "unanswerable": true,
+      "split": "dev"
+    },
+    {
+      "id": "u05",
+      "q": "Quale CCNL si applica ai ristoranti?",
+      "unanswerable": true,
+      "split": "dev"
+    },
+    {
+      "id": "u06",
+      "q": "Chi è il presidente dell'INPS?",
+      "unanswerable": true,
+      "split": "dev"
+    },
+    {
+      "id": "h01",
+      "split": "holdout",
+      "q": "Per quanti figli minorenni deve essere madre la lavoratrice per l'esonero della legge di Bilancio 2026?",
+      "must_include": [
+        "tre"
+      ],
+      "gold": [
+        [
+          "82",
+          "1.p1"
+        ],
+        [
+          "82",
+          "1.p5"
+        ]
+      ]
+    },
+    {
+      "id": "h02",
+      "split": "holdout",
+      "q": "Qual è il limite annuo dell'esonero per l'assunzione di madri di almeno tre figli?",
+      "must_include": [
+        "8 000|8000|ottomila"
+      ],
+      "gold": [
+        [
+          "82",
+          "1.p7"
+        ]
+      ]
+    },
+    {
+      "id": "h03",
+      "split": "holdout",
+      "q": "Per quanti mesi spetta l'esonero per madri di tre figli se l'assunzione è a tempo determinato?",
+      "must_include": [
+        "dodici|12"
+      ],
+      "gold": [
+        [
+          "82",
+          "1.p2"
+        ]
+      ]
+    },
+    {
+      "id": "h04",
+      "split": "holdout",
+      "q": "Da quanti mesi deve essere priva di impiego la madre di almeno tre figli per l'esonero 2026?",
+      "must_include": [
+        "sei|6"
+      ],
+      "gold": [
+        [
+          "82",
+          "1.p1"
+        ],
+        [
+          "82",
+          "1.p6"
+        ]
+      ]
+    },
+    {
+      "id": "h05",
+      "split": "holdout",
+      "q": "In quale periodo devono essere effettuate le trasformazioni a tempo indeterminato per l'incentivo alla stabilizzazione dei giovani?",
+      "must_include": [
+        "1 agosto 2026",
+        "31 dicembre 2026"
+      ],
+      "gold": [
+        [
+          "72",
+          "1.p4"
+        ]
+      ]
+    },
+    {
+      "id": "h06",
+      "split": "holdout",
+      "q": "Qual è il tetto mensile dell'incentivo alla stabilizzazione dei giovani?",
+      "must_include": [
+        "500"
+      ],
+      "gold": [
+        [
+          "72",
+          "1.p6"
+        ]
+      ]
+    },
+    {
+      "id": "h07",
+      "split": "holdout",
+      "q": "L'incentivo alla stabilizzazione dei giovani spetta per il personale dirigenziale?",
+      "must_include": [
+        "esclus|non spetta|no"
+      ],
+      "gold": [
+        [
+          "72",
+          "1.p3"
+        ]
+      ]
+    },
+    {
+      "id": "h08",
+      "split": "holdout",
+      "q": "Entro quale data devono essere stati instaurati i rapporti a tempo determinato da trasformare per l'incentivo alla stabilizzazione?",
+      "must_include": [
+        "30 aprile 2026"
+      ],
+      "gold": [
+        [
+          "72",
+          "1.p4"
+        ]
+      ]
+    },
+    {
+      "id": "u06n",
+      "split": "holdout",
+      "q": "Entro quale data va presentata la domanda per il Bonus Giovani 2028?",
+      "unanswerable": true
+    },
+    {
+      "id": "u07n",
+      "split": "holdout",
+      "q": "Qual è il tetto mensile del Bonus Donne per le assunzioni effettuate nel 2029?",
+      "unanswerable": true
+    }
+  ]
+}

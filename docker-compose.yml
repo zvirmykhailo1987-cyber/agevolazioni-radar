@@ -1,0 +1,8 @@
+services:
+  web:
+    build: .
+    ports: ["8040:8040"]
+    env_file: [{path: .env.local, required: false}]
+    volumes: ["./data:/data:ro"]
+    read_only: true
+    tmpfs: ["/tmp"]

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>{% block title %}Agevolazioni Radar{% endblock %}</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap top-in">
+    <a class="brand" href="/"><span class="dot" aria-hidden="true"></span>Agevolazioni Radar</a>
+    <nav aria-label="Principale">
+      <a href="/" {% if request.url.path == '/' %}aria-current="page"{% endif %}>Incentivi</a>
+      <a href="/verifica" {% if request.url.path == '/verifica' %}aria-current="page"{% endif %}>Pre-verifica</a>
+      <a href="/chiedi" {% if request.url.path == '/chiedi' %}aria-current="page"{% endif %}>Chiedi</a>
+    </nav>
+  </div>
+</header>
+<main class="wrap" data-state="{{ state | default('ready') }}">
+{% block content %}{% endblock %}
+</main>
+<footer class="wrap foot">
+  <p>Fonte: circolari e messaggi pubblici INPS. Ultimo atto letto: <strong>{{ fresh.latest_act_published_on | fmt if fresh.latest_act_published_on else 'n/d' }}</strong>
+  · {{ fresh.acts_scanned }} atti scansionati · {{ fresh.documents_in_kb }} in base di conoscenza.</p>
+  <p>Demo tecnica, non consulenza: le decisioni spettano a un consulente del lavoro (L. 12/1979). Non affiliata a INPS.
+  © 2026 Mykhailo Zvir · MIT License</p>
+</footer>
+</body>
+</html>

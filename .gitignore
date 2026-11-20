@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+.env.local
+.env
+data/
+dbt/target/
+dbt/logs/
+dbt/.user.yml
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+scripts/save-key-from-clipboard.ps1

@@ -1,0 +1,16 @@
+version: 2
+models:
+  - name: stg_acts
+    columns:
+      - name: doc_type
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['Circolare', 'Messaggio']
+      - name: published_on
+        tests: [not_null]
+  - name: stg_documents
+    tests:
+      - unique_combination:
+          arguments:
+            columns: [doc_id, content_hash]

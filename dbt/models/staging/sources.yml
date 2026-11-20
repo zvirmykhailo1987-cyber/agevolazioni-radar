@@ -1,0 +1,23 @@
+version: 2
+sources:
+  - name: raw
+    description: "Loaded by dlt from public INPS JSON endpoints (radar.inps_source)."
+    schema: raw
+    loaded_at_field: "to_timestamp(cast(_dlt_load_id as double))"
+    freshness:
+      warn_after: {count: 2, period: day}   # the loader runs every working day
+      error_after: {count: 4, period: day}
+    tables:
+      - name: acts
+        description: "Every circular and message in the window, newest first."
+        columns:
+          - name: doc_id
+            tests: [not_null, unique]
+      - name: documents
+        description: "Full text of incentive-related acts; one row per (doc_id, content_hash) version."
+        freshness: null
+        columns:
+          - name: doc_id
+            tests: [not_null]
+          - name: content_hash
+            tests: [not_null]

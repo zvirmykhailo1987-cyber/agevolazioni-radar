@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Chiedi · Agevolazioni Radar{% endblock %}
+{% block content %}
+<h1>Chiedi alle circolari</h1>
+<p class="lead">Risposta solo dai paragrafi INPS recuperati, con citazioni controllate dal codice. Se la fonte non lo dice, la risposta è un rifiuto.</p>
+{% if qa_enabled %}
+<form method="post" class="ask">
+  <label class="sr" for="q">Domanda</label>
+  <input id="q" name="q" required minlength="5" maxlength="300" value="{{ q }}" placeholder="Es. Qual è il tetto mensile del Bonus Donne nella ZES?">
+  <button type="submit">Chiedi</button>
+</form>
+{% else %}<p class="empty">Le domande dal vivo sono disattivate in questa istanza. Sotto: risposte della valutazione automatica.</p>{% endif %}
+{% if error %}<p class="notice" role="alert">{{ error }}</p>{% endif %}
+{% if result %}
+<section class="card answer {% if not result.answerable %}refused{% endif %}" aria-live="polite">
+  <p class="muted small">{{ result.question }}</p>
+  <p class="ans">{{ result.answer }}</p>
+  {% if result.citations %}<ol class="cites">
+    {% for c in result.citations %}<li><q>{{ c.quote }}</q> — <a href="{{ c.url }}" target="_blank" rel="noopener">{{ c.doc_label }}</a> <span class="anchor">§{{ c.anchor }}</span></li>{% endfor %}
+  </ol>{% endif %}
+  {% if result.rejected_citations %}<p class="muted small">{{ result.rejected_citations }} citazioni scartate dal controllo.</p>{% endif %}
+</section>
+{% endif %}
+{% if examples %}
+<section><h2>Esempi dalla valutazione</h2>
+<ul class="list">{% for e in examples %}<li class="ex"><p class="muted small">{{ e.q }}</p><p class="ans">{{ e.answer }}</p><p class="muted small">{% for d,a in e.citations %}{{ d }} §{{ a }}{% if not loop.last %} · {% endif %}{% endfor %}</p></li>{% endfor %}</ul>
+</section>
+{% endif %}
+{% endblock %}

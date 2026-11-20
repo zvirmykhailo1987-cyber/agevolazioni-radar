@@ -1,0 +1,18 @@
+version: 2
+models:
+  - name: doc_versions
+    description: "Version history of each act (SCD2 on the full-text hash)."
+    tests:
+      - unique_combination:
+          arguments:
+            columns: [doc_id, version]
+    columns:
+      - name: is_current
+        tests: [not_null]
+  - name: incentive_documents
+    description: "Current version of each incentive-related act: the knowledge-base input."
+    columns:
+      - name: doc_id
+        tests: [unique, not_null]
+      - name: body_html
+        tests: [not_null]

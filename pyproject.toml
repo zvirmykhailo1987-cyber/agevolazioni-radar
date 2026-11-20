@@ -1,0 +1,81 @@
+[project]
+name = "agevolazioni-radar"
+version = "0.1.0"
+description = "INPS hiring incentives as a versioned, cited knowledge base: dlt + dbt + DuckDB, Claude extraction with a citation gate, RAG, MCP server, evals."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Mykhailo Zvir" }]
+requires-python = ">=3.12"
+dependencies = [
+  "dlt[duckdb]>=1.32",
+  "dbt-duckdb>=1.11",
+  "duckdb>=1.5",
+  "anthropic>=2.11",
+  "mcp>=2.3",
+  "langchain-core>=1.8",
+  "langchain-community>=0.4",
+  "rank-bm25>=0.2.2",
+  "fastapi>=0.165",
+  "uvicorn>=0.38",
+  "jinja2>=3.1",
+  "python-multipart>=0.0.20",
+  "pydantic>=2.14",
+  "httpx>=0.28",
+  "tzdata>=2025.2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-cov>=6", "ruff>=0.14", "mypy>=1.18", "pip-audit>=2.9", "bandit>=1.8"]
+
+[project.scripts]
+radar-load = "radar.pipeline:main"
+radar-kb = "radar.kb:main"
+radar-mcp = "radar.mcp_server:main"
+radar-web = "radar.web:main"
+radar-evals = "radar.evals:main"
+
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+radar = ["templates/*.html", "static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.coverage.run]
+branch = true
+source = ["radar"]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+exclude_also = ['if __name__ == .__main__.:', 'def main()']
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "RUF"]
+ignore = ["S101", "S608", "RUF001", "RUF002", "RUF003", "B008"]  # B008: FastAPI Form() and dlt incremental idioms
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S", "B", "RUF012", "E501"]
+"scripts/*" = ["S", "E501"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+mypy_path = "src"
+packages = ["radar"]
+
+[tool.ruff.lint.isort]
+known-third-party = ["airflow"]

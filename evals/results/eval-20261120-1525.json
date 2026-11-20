@@ -1,0 +1,654 @@
+{
+  "at": "2026-11-20T15:23:34+00:00",
+  "qa": {
+    "summary": {
+      "n_answerable": 24,
+      "n_unanswerable": 5,
+      "fact_recall": 0.75,
+      "citation_hit": 0.417,
+      "answered_when_answerable": 0.75,
+      "refused_when_unanswerable": 1.0,
+      "rejected_citations": 0
+    },
+    "usage": {
+      "input_tokens": 64397,
+      "output_tokens": 11539
+    },
+    "seconds": 118.7,
+    "items": [
+      {
+        "id": "g01",
+        "kind": "answerable",
+        "refusal_ok": true,
+        "fact_recall": true,
+        "citation_hit": true,
+        "rejected": 0,
+        "q": "Qual è la percentuale di esonero contributivo del Bonus Giovani 2026?",
+        "answer": "Il Bonus Giovani 2026 prevede un esonero dal versamento del 100 per cento dei contributi previdenziali a carico dei datori di lavoro privati, per un periodo massimo di ventiquattro mesi, per le assunzioni a tempo indeterminato di giovani effettuate dal 1° gennaio 2026 al 31 dicembre 2026. La verifica finale spetta a un consulente del lavoro.",
+        "citations": [
+          [
+            "Circolare n. 55 del 14/05/2026",
+            "1.p1"
+          ]
+        ]
+      },
+      {
+        "id": "g02",
+        "kind": "answerable",
+        "refusal_ok": true,
+        "fact_recall": true,
+        "citation_hit": false,
+        "rejected": 0,
+        "q": "Qual è il limite massimo mensile del Bonus Giovani per ciascun lavoratore?",
+        "answer": "Il limite massimo è di 500 euro su base mensile per ciascun lavoratore. Sale a 650 euro su base mensile per ciascun lavoratore se l'assunzione o la trasformazione riguarda una sede o unità produttiva nelle regioni Abruzzo, Molise, Campania, Basilicata, Sicilia, Puglia, Calabria e Sardegna (ZES unica). In entrambi i casi restano i limiti di spesa autorizzata e i criteri del Programma nazionale Giovani, donne e lavoro 2021-2027. La verifica finale spetta a un consulente del lavoro.",
+        "citations": [
+          [
+            "Messaggio n. 2451 del 23/07/2026",
+            "0.p2"
+          ],
+          [
+            "Messaggio n. 2451 del 23/07/2026",
+            "0.p3"
+          ]
+        ]
+      },
+      {
+        "id": "g03",
+        "kind": "answerable",
+        "refusal_ok": true,
+        "fact_recall": true,
+        "citation_hit": true,
+        "rejected": 0,
+        "q": "Di quanto aumenta il limite mensile del Bonus Giovani se il giovane è assunto in una sede nelle regioni della ZES unica?",
+        "answer": "Se il giovane lavoratore svantaggiato o molto svantaggiato è assunto in una sede o unità produttiva nelle regioni della ZES unica, la misura dell'esonero è aumentata nel limite massimo di 650 euro su base mensile (per ciascun lavoratore). I passaggi non indicano di quanto aumenti rispetto all'importo base, ma solo il limite massimo di 650 euro mensili. La verifica finale spetta a un consulente del lavoro.",
+        "citations": [
+          [
+            "Circolare n. 55 del 14/05/2026",
+            "1.p14"
+          ],
+          [
+            "Messaggio n. 2451 del 23/07/2026",
+            "0.p3"
+          ]
+        ]
+      },
+      {
+        "id": "g04",
+        "kind": "answerable",
+        "refusal_ok": true,
+        "fact_recall": true,
+        "citation_hit": true,
+        "rejected": 0,
+        "q": "Per quanti mesi al massimo spetta il Bonus Giovani per i giovani privi di impiego regolarmente retribuito da almeno ventiquattro mesi?",
+        "answer": "Per un periodo massimo di ventiquattro mesi, a condizione che l'assunzione sia a tempo indeterminato e riguardi giovani che alla data dell'assunzione non abbiano compiuto 35 anni e siano privi di un impiego regolarmente retribuito da almeno ventiquattro mesi. La verifica finale spetta a un consulente del lavoro.",
+        "citations": [
+          [
+            "Circolare n. 55 del 14/05/2026",
+            "1.p3"
+          ]
+        ]
+      },
+      {
+        "id": "g05",
+        "kind": "answerable",
+        "refusal_ok": true,
+        "fact_recall": true,
+        "citation_hit": false,
+        "rejected": 0,
+        "q": "Quale età non deve aver compiuto il giovane alla data dell'assunzione per il Bonus Giovani?",
+        "answer": "Alla data dell'assunzione il giovane non deve aver compiuto il trentacinquesimo anno di età, cioè 35 anni (da intendersi 34 anni e 364 giorni).",
+        "citations": [
+          [
+            "Circolare n. 55 del 14/05/2026",
+            "7.p3"
+          ],
+          [
+            "Messaggio n. 1966 del 11/06/2026",
+            "0.p5"
+          ]
+        ]
+      },
+      {
+        "id": "g06",
+        "kind": "answerable",
+        "refusal_ok": false,
+        "fact_recall": false,
+        "citation_hit": false,
+        "rejected": 0,
+        "q": "Il Bonus Giovani spetta per i rapporti di apprendistato?",
+        "answer": "Non trovo questa informazione nelle circolari e nei messaggi INPS presenti nella base di conoscenza.",
+        "citations": []
+      },
+      {
+        "id": "g07",
+        "kind": "answerable",
+        "refusal_ok": false,
+        "fact_recall": false,
+        "citation_hit": false,
+        "rejected": 0,
+        "q": "Il Bonus Giovani copre anche i premi e contributi INAIL?",
+        "answer": "Non trovo questa informazione nelle circolari e nei messaggi INPS presenti nella base di conoscenza.",
+        "citations": []
+      },
+      {
+        "id": "g08",
+        "kind": "answerable",
+        "refusal_ok": true,
+        "fact_recall": true,
+        "citation_hit": true,
+        "rejected": 0,
+        "q": "Quale decreto-legge ha introdotto il Bonus Giovani 2026?",
+        "answer": "Il Bonus Giovani 2026 è stato introdotto dal decreto-legge 30 aprile 2026, n. 62 (decreto Lavoro), all'articolo 2.",
+        "citations": [
+          [
+            "Circolare n. 55 del 14/05/2026",
+            "1.p1"
+          ]
+        ]
+      },
+      {
+        "id": "g09",
+        "kind": "answerable",
+        "refusal_ok": false,
+        "fact_recall": false,
+        "citation_hit": false,
+        "rejected": 0,
+        "q": "Il riconoscimento del Bonus Giovani è subordinato all'incremento occupazionale netto?",
+        "answer": "Non trovo questa informazione nelle circolari e nei messaggi INPS presenti nella base di conoscenza.",
+        "citations": []
+      },
+      {
+        "id": "g10",
+        "kind": "answerable",
+        "refusal_ok": true,
+        "fact_recall": true,
+        "citation_hit": true,
+        "rejected": 0,
+        "q": "Quali regioni rientrano nella ZES unica secondo la circolare sul Bonus ZES?",
+        "answer": "Secondo la Circolare n. 56 del 14/05/2026 sul Bonus ZES 2026, le regioni che rientrano nella ZES unica sono Abruzzo, Basilicata, Calabria, Campania, Marche, Molise, Puglia, Sicilia, Sardegna e Umbria. La verifica finale spetta a un consulente del lavoro.",
+        "citations": [
+          [
+            "Circolare n. 56 del 14/05/2026",
+            "1.p3"
+          ]
+        ]
+      },
+      {
+        "id": "g11",
+        "kind": "answerable",
+        "refusal_ok": true,
+        "fact_recall": true,
+        "citation_hit": true,
+        "rejected": 0,
+        "q": "Quanti dipendenti può occupare al massimo il datore di lavoro per accedere al Bonus ZES?",
+        "answer": "Il datore di lavoro privato, nel mese in cui procede all'assunzione, deve occupare fino a un massimo di 10 dipendenti. Tale limite va verificato al netto del numero dei lavoratori per i quali si intende beneficiare dell'esonero, e deve sussistere solo nel mese dell'assunzione incentivabile (le variazioni successive non rilevano).",
+        "citations": [
+          [
+            "Circolare n. 56 del 14/05/2026",
+            "1.p4"
+          ],
+          [
+            "Circolare n. 56 del 14/05/2026",
+            "2.p8"
+          ],
+          [
+            "Circolare n. 56 del 14/05/2026",
+            "2.p7"
+          ]
+        ]
+      },
+      {
+        "id": "g12",
+        "kind": "answerable",
+        "refusal_ok": false,
+        "fact_recall": false,
+        "citation_hit": false,
+        "rejected": 0,
+        "q": "Che età deve avere il lavoratore assunto con il Bonus ZES?",
+        "answer": "Non trovo questa informazione nelle circolari e nei messaggi INPS presenti nella base di conoscenza.",
+        "citations": []
+      },
+      {
+        "id": "g13",
+        "kind": "answerable",
+        "refusal_ok": true,
+        "fact_recall": true,
+        "citation_hit": false,
+        "rejected": 0,
+        "q": "Da quanto tempo deve essere disoccupato il lavoratore per il Bonus ZES?",
+        "answer": "Per il Bonus ZES 2026 il lavoratore, alla data dell'assunzione incentivata, deve essere disoccupato da almeno ventiquattro mesi. Il datore di lavoro deve dichiarare tale stato nell'istanza di richiesta dell'esonero. La verifica finale spetta a un consulente del lavoro.",
+        "citations": [
+          [
+            "Circolare n. 56 del 14/05/2026",
+            "7.p4"
+          ],
+          [
+            "Circolare n. 56 del 14/05/2026",
+            "3.p6"
+          ]
+        ]
+      },
+      {
+        "id": "g14",
+        "kind": "answerable",
+        "refusal_ok": true,
+        "fact_recall": true,
+        "citation_hit": false,
+        "rejected": 0,
+        "q": "Qual è il limite massimo mensile dell'esonero del Bonus ZES?",
+        "answer": "Il passaggio non parla di un \"Bonus ZES\" con un unico limite: il limite massimo mensile dipende dalla misura. Per i lavoratori svantaggiati o molto svantaggiati assunti in una sede o unità produttiva nelle regioni della ZES unica (Circolare n. 55) è pari a 650 euro su base mensile; per le lavoratrici molto svantaggiate o svantaggiate residenti nella ZES Unica alla data dell'assunzione (Circolare n. 57) è pari a 800 euro su base mensile per ciascuna lavoratrice. La verifica finale spetta a un consulente del lavoro.",
+        "citations": [
+          [
+            "Circolare n. 55 del 14/05/2026",
+            "5.p3"
+          ],
+          [
+            "Circolare n. 57 del 14/05/2026",
+            "5.p3"
+          ]
+        ]
+      },
+      {
+        "id": "g15",
+        "kind": "answerable",
+        "refusal_ok": true,
+        "fact_recall": true,
+        "citation_hit": false,
+        "rejected": 0,
+        "q": "Il Bonus ZES può riguardare personale dirigenziale?",
+        "answer": "No. Il Bonus ZES riguarda solo l'assunzione di personale non dirigenziale con contratto di lavoro subordinato a tempo indeterminato; il personale dirigenziale è escluso.",
+        "citations": [
+          [
+            "Circolare n. 56 del 14/05/2026",
+            "4.p1"
+          ],
+          [
+            "Messaggio n. 2451 del 23/07/2026",
+            "0.p8"
+          ]
+        ]
+      },
+      {
+        "id": "g16",
+        "kind": "answerable",
+        "refusal_ok": true,
+        "fact_recall": true,
+        "citation_hit": true,
+        "rejected": 0,
+        "q": "Il Bonus Donne è riservato a una fascia di età?",
+        "answer": "No. Per gli esoneri contributivi (Bonus Donne 2026) l'assunzione a tempo indeterminato deve riguardare donne di qualsiasi età, che alla data dell'assunzione siano prive di un impiego regolarmente retribuito da almeno ventiquattro mesi, ovunque residenti. La verifica finale spetta a un consulente del lavoro.",
+        "citations": [
+          [
+            "Circolare n. 57 del 14/05/2026",
+            "1.p3"
+          ]
+        ]
+      },
+      {
+        "id": "g17",
+        "kind": "answerable",
+        "refusal_ok": true,
+        "fact_recall": true,
+        "citation_hit": true,
+        "rejected": 0,
+        "q": "Da quanto tempo devono essere prive di impiego regolarmente retribuito le donne per il Bonus Donne, nel caso generale?",
+        "answer": "Nel caso generale (esonero di cui alla lett. A della circolare n. 57/2026), le donne devono essere prive di un impiego regolarmente retribuito da almeno ventiquattro mesi, ovunque residenti. Sono previsti requisiti diversi per altri casi (ad esempio dodici mesi per le donne appartenenti a categorie di lavoratori svantaggiati, sei mesi per le madri di almeno tre figli minori di diciotto anni).",
+        "citations": [
+          [
+            "Circolare n. 57 del 14/05/2026",
+            "1.p3"
+          ],
+          [
+            "Circolare n. 57 del 14/05/2026",
+            "4.p10"
+          ],
+          [
+            "Circolare n. 57 del 14/05/2026",
+            "4.p15"
+          ],
+          [
+            "Circolare n. 82 del 29/07/2026",
+            "3.p1"
+          ]
+        ]
+      },
+      {
+        "id": "g18",
+        "kind": "answerable",
+        "refusal_ok": true,
+        "fact_recall": true,
+        "citation_hit": false,
+        "rejected": 0,
+        "q": "Qual è il limite massimo mensile del Bonus Donne per ciascuna lavoratrice?",
+        "answer": "Il Bonus Donne (art. 23 del decreto Coesione) prevede un esonero del 100 per cento dei contributi previdenziali a carico dei datori di lavoro, con esclusione dei premi e contributi INAIL, nel limite massimo di 650 euro su base mensile per ciascuna lavoratrice, nei limiti della spesa autorizzata e nel rispetto delle procedure e dei criteri del Programma nazionale Giovani, donne e lavoro 2021-2027. Per le lavoratrici molto svantaggiate o svantaggiate residenti nella ZES Unica alla data dell'assunzione, il massimo è invece di 800 euro mensili (Circolare n. 57/2026, lettera D).",
+        "citations": [
+          [
+            "Messaggio n. 2451 del 23/07/2026",
+            "0.p6"
+          ],
+          [
+            "Messaggio n. 2451 del 23/07/2026",
+            "0.p5"
+          ],
+          [
+            "Circolare n. 57 del 14/05/2026",
+            "5.p3"
+          ]
+        ]
+      },
+      {
+        "id": "g19",
+        "kind": "answerable",
+        "refusal_ok": true,
+        "fact_recall": true,
+        "citation_hit": true,
+        "rejected": 0,
+        "q": "Quanto vale al massimo il Bonus Donne al mese per una lavoratrice residente nelle regioni della ZES unica?",
+        "answer": "Per le lavoratrici molto svantaggiate o svantaggiate residenti nella ZES unica alla data dell'assunzione, l'importo massimo dell'esonero è pari a 800 euro su base mensile per ciascuna lavoratrice. La verifica finale spetta a un consulente del lavoro.",
+        "citations": [
+          [
+            "Circolare n. 57 del 14/05/2026",
+            "5.p3"
+          ],
+          [
+            "Circolare n. 57 del 14/05/2026",
+            "1.p15"
+          ]
+        ]
+      },
+      {
+        "id": "g20",
+        "kind": "answerable",
+        "refusal_ok": true,
+        "fact_recall": true,
+        "citation_hit": false,
+        "rejected": 0,
+        "q": "Il Bonus Donne spetta per il lavoro domestico?",
+        "answer": "No. Secondo la Circolare n. 82, l'esonero contributivo riguarda i rapporti di lavoro dipendente a tempo determinato e indeterminato del settore privato (incluso quello agricolo, compreso il part-time), con esclusione dei rapporti di lavoro domestico e di apprendistato. La verifica finale spetta a un consulente del lavoro.",
+        "citations": [
+          [
+            "Circolare n. 82 del 29/07/2026",
+            "3.p10"
+          ]
+        ]
+      },
+      {
+        "id": "g21",
+        "kind": "answerable",
+        "refusal_ok": false,
+        "fact_recall": false,
+        "citation_hit": false,
+        "rejected": 0,
+        "q": "Per il Bonus Donne, quale fascia di età indica la lettera b) della definizione di lavoratore svantaggiato?",
+        "answer": "Non trovo questa informazione nelle circolari e nei messaggi INPS presenti nella base di conoscenza.",
+        "citations": []
+      },
+      {
+        "id": "g22",
+        "kind": "answerable",
+        "refusal_ok": true,
+        "fact_recall": true,
+        "citation_hit": false,
+        "rejected": 0,
+        "q": "Il Bonus Donne richiede l'incremento occupazionale netto?",
+        "answer": "Sì, per quanto risulta dalla Circolare n. 57 del 14/05/2026, che riguarda le agevolazioni per l'assunzione delle donne svantaggiate. Queste si applicano nel rispetto del regolamento (UE) 651/2014 e il requisito dell'incremento occupazionale netto va verificato in concreto per ogni singola assunzione per cui si vuole fruire dell'esonero. La verifica finale spetta a un consulente del lavoro.",
+        "citations": [
+          [
+            "Circolare n. 57 del 14/05/2026",
+            "8.p1"
+          ],
+          [
+            "Circolare n. 57 del 14/05/2026",
+            "8.p17"
+          ]
+        ]
+      },
+      {
+        "id": "g23",
+        "kind": "answerable",
+        "refusal_ok": true,
+        "fact_recall": true,
+        "citation_hit": true,
+        "rejected": 0,
+        "q": "Quale regolamento UE deve essere rispettato per il Bonus Donne?",
+        "answer": "Per il Bonus Donne 2026 (assunzioni di donne svantaggiate) le agevolazioni si applicano nel rispetto del regolamento (UE) 651/2014 della Commissione, del 17 giugno 2014.",
+        "citations": [
+          [
+            "Circolare n. 57 del 14/05/2026",
+            "8.p1"
+          ],
+          [
+            "Circolare n. 57 del 14/05/2026",
+            "1.p16"
+          ],
+          [
+            "Messaggio n. 1970 del 11/06/2026",
+            "0.p2"
+          ]
+        ]
+      },
+      {
+        "id": "g24",
+        "kind": "answerable",
+        "refusal_ok": false,
+        "fact_recall": false,
+        "citation_hit": false,
+        "rejected": 0,
+        "q": "In quale periodo devono avvenire le assunzioni nella ZES unica per avere il Bonus Giovani maggiorato?",
+        "answer": "Non trovo questa informazione nelle circolari e nei messaggi INPS presenti nella base di conoscenza.",
+        "citations": []
+      },
+      {
+        "id": "u01",
+        "kind": "unanswerable",
+        "refusal_ok": true,
+        "rejected": 0,
+        "q": "Qual è l'importo del bonus assunzioni per la Lombardia nel 2027?",
+        "answer": "Non trovo questa informazione nelle circolari e nei messaggi INPS presenti nella base di conoscenza.",
+        "citations": []
+      },
+      {
+        "id": "u02",
+        "kind": "unanswerable",
+        "refusal_ok": true,
+        "rejected": 0,
+        "q": "Quanto costa l'abbonamento mensile a un software di payroll?",
+        "answer": "Non trovo questa informazione nelle circolari e nei messaggi INPS presenti nella base di conoscenza.",
+        "citations": []
+      },
+      {
+        "id": "u03",
+        "kind": "unanswerable",
+        "refusal_ok": true,
+        "rejected": 0,
+        "q": "Qual è l'aliquota IRPEF per un reddito di 40.000 euro?",
+        "answer": "Non trovo questa informazione nelle circolari e nei messaggi INPS presenti nella base di conoscenza.",
+        "citations": []
+      },
+      {
+        "id": "u05",
+        "kind": "unanswerable",
+        "refusal_ok": true,
+        "rejected": 0,
+        "q": "Quale CCNL si applica ai ristoranti?",
+        "answer": "Non trovo questa informazione nelle circolari e nei messaggi INPS presenti nella base di conoscenza.",
+        "citations": []
+      },
+      {
+        "id": "u06",
+        "kind": "unanswerable",
+        "refusal_ok": true,
+        "rejected": 0,
+        "q": "Chi è il presidente dell'INPS?",
+        "answer": "Non trovo questa informazione nelle circolari e nei messaggi INPS presenti nella base di conoscenza.",
+        "citations": []
+      }
+    ]
+  },
+  "extraction": {
+    "field_accuracy": 0.9,
+    "fields": 20,
+    "rules": [
+      {
+        "circular": "55",
+        "found": true,
+        "fields": {
+          "exemption_percent": {
+            "expected": 100,
+            "got": 100.0,
+            "ok": true,
+            "status": "verified"
+          },
+          "monthly_cap_eur": {
+            "expected": 500,
+            "got": 500.0,
+            "ok": true,
+            "status": "verified"
+          },
+          "monthly_cap_eur_zes": {
+            "expected": 650,
+            "got": 650.0,
+            "ok": true,
+            "status": "verified"
+          },
+          "max_duration_months": {
+            "expected": 24,
+            "got": 24,
+            "ok": true,
+            "status": "verified"
+          },
+          "worker_max_age_exclusive": {
+            "expected": 35,
+            "got": 35,
+            "ok": true,
+            "status": "verified"
+          },
+          "min_months_without_regular_job": {
+            "expected": 24,
+            "got": null,
+            "ok": false,
+            "status": "absent"
+          },
+          "requires_net_job_increase": {
+            "expected": true,
+            "got": true,
+            "ok": true,
+            "status": "verified"
+          }
+        }
+      },
+      {
+        "circular": "56",
+        "found": true,
+        "fields": {
+          "exemption_percent": {
+            "expected": 100,
+            "got": 100.0,
+            "ok": true,
+            "status": "verified"
+          },
+          "monthly_cap_eur": {
+            "expected": 650,
+            "got": 650.0,
+            "ok": true,
+            "status": "verified"
+          },
+          "worker_min_age": {
+            "expected": 35,
+            "got": 35,
+            "ok": true,
+            "status": "verified"
+          },
+          "min_months_without_regular_job": {
+            "expected": 24,
+            "got": 24,
+            "ok": true,
+            "status": "verified"
+          },
+          "employer_max_employees": {
+            "expected": 10,
+            "got": 10,
+            "ok": true,
+            "status": "verified"
+          },
+          "only_zes_regions": {
+            "expected": true,
+            "got": true,
+            "ok": true,
+            "status": "verified"
+          },
+          "zes_regions": {
+            "expected": [
+              "Abruzzo",
+              "Basilicata",
+              "Calabria",
+              "Campania",
+              "Marche",
+              "Molise",
+              "Puglia",
+              "Sicilia",
+              "Sardegna",
+              "Umbria"
+            ],
+            "got": [
+              "Abruzzo",
+              "Basilicata",
+              "Calabria",
+              "Campania",
+              "Marche",
+              "Molise",
+              "Puglia",
+              "Sicilia",
+              "Sardegna",
+              "Umbria"
+            ],
+            "ok": true,
+            "status": "verified"
+          }
+        }
+      },
+      {
+        "circular": "57",
+        "found": true,
+        "fields": {
+          "exemption_percent": {
+            "expected": 100,
+            "got": 100.0,
+            "ok": true,
+            "status": "verified"
+          },
+          "monthly_cap_eur": {
+            "expected": 650,
+            "got": 650.0,
+            "ok": true,
+            "status": "verified"
+          },
+          "monthly_cap_eur_zes": {
+            "expected": 800,
+            "got": 800.0,
+            "ok": true,
+            "status": "verified"
+          },
+          "worker_gender": {
+            "expected": "donna",
+            "got": "donna",
+            "ok": true,
+            "status": "verified"
+          },
+          "min_months_without_regular_job": {
+            "expected": 24,
+            "got": null,
+            "ok": false,
+            "status": "absent"
+          },
+          "requires_net_job_increase": {
+            "expected": true,
+            "got": true,
+            "ok": true,
+            "status": "verified"
+          }
+        }
+      }
+    ]
+  }
+}

@@ -147,20 +147,27 @@ def extract_all(
     return stats
 
 
+_RULES_SELECT = (
+    "select e.doc_id, e.content_hash, d.number, d.doc_type, d.published_on, d.url, e.raw_json, e.model "
+    "from kb.extractions e "
+    "join marts.incentive_documents d on d.doc_id = e.doc_id and d.content_hash = e.content_hash "
+    "where e.prompt_version = ? "
+)
+_RULES_ORDER = (
+    "qualify row_number() over (partition by e.doc_id order by e.created_at desc) = 1 order by d.published_on, d.number"
+)
+_RULES_ANY_MODEL = _RULES_SELECT + _RULES_ORDER
+_RULES_FOR_MODEL = _RULES_SELECT + "and e.model = ? " + _RULES_ORDER
+
+
 def rules(con: duckdb.DuckDBPyConnection, model: str | None = None) -> list[dict[str, Any]]:
     """Latest extracted rules for the current version of each document.
 
     The citation gate is re-applied here to the model's raw output, so a stricter gate
     takes effect on stored extractions without paying for the API again.
     """
-    q = """
-        select e.doc_id, e.content_hash, d.number, d.doc_type, d.published_on, d.url, e.raw_json, e.model
-        from kb.extractions e
-        join marts.incentive_documents d on d.doc_id = e.doc_id and d.content_hash = e.content_hash
-        where e.prompt_version = ? {model_filter}
-        qualify row_number() over (partition by e.doc_id order by e.created_at desc) = 1
-        order by d.published_on, d.number
-    """.format(model_filter="and e.model = ?" if model else "")
+    # two constant queries, no string formatting: every value is a bound parameter
+    q = _RULES_FOR_MODEL if model else _RULES_ANY_MODEL
     params: list[Any] = [PROMPT_VERSION] + ([model] if model else [])
     out = []
     for doc_id, chash, number, doc_type, published_on, url, raw_json, mdl in con.execute(q, params).fetchall():

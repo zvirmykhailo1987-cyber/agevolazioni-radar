@@ -158,7 +158,8 @@ class InpsClient:
                     raise
                 last = exc
                 self.sleep(self.delay_s * (2 ** (attempt + 1)))
-        assert last is not None
+        if last is None:  # unreachable: the loop either returns or records an error
+            raise RuntimeError("request failed without an error")
         raise last
 
     def iter_listing(self, since: date, max_pages: int = 400) -> Iterator[dict[str, Any]]:

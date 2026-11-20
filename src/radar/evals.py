@@ -111,7 +111,8 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
 def run_qa(store: Store, llm: Answerer, golden: Path = EVALS / "golden_qa.json", repeats: int = 1) -> dict[str, Any]:
     """Run the golden set ``repeats`` times; the model is not deterministic, so report spread."""
     items = json.loads(golden.read_text(encoding="utf-8"))["items"]
-    assert store.retriever is not None, "empty knowledge base"
+    if store.retriever is None:
+        raise RuntimeError("empty knowledge base: build it before running evals")
     runs, usage, t0 = [], {"input_tokens": 0, "output_tokens": 0}, time.perf_counter()
     for _ in range(repeats):
         rows = []
@@ -212,7 +213,8 @@ def score_rules(rule_rows: list[dict[str, Any]], golden: Path = EVALS / "golden_
 def retrieval_recall(store: Store, golden: Path = EVALS / "golden_qa.json", k: int = 10) -> dict[str, Any]:
     """Free, deterministic: is a gold paragraph among the top-k retrieved, per split (no LLM)."""
     items = [i for i in json.loads(golden.read_text(encoding="utf-8"))["items"] if not i.get("unanswerable")]
-    assert store.retriever is not None, "empty knowledge base"
+    if store.retriever is None:
+        raise RuntimeError("empty knowledge base: build it before running evals")
     out: dict[str, Any] = {}
     for split in ("dev", "holdout"):
         rows = [i for i in items if i.get("split", "dev") == split]

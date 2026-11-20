@@ -207,7 +207,7 @@ def work_queue(findings: list[Any]) -> list[dict[str, Any]]:
 
 def meter(f: Any) -> dict[str, int]:
     """Criteria of one finding: decided yes, open, no."""
-    out = {"pass": 0, "unknown": 0, "fail": 0}
+    out = {"pass": 0, "unknown": 0, "fail": 0}  # nosec B105 - outcome names, not a password
     for c in f.assessment["checks"]:
         out[c["outcome"]] += 1
     return out

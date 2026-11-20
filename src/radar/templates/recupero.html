@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Recupero · {{ wf.company.name }}{% endblock %}
+{% block content %}
+<p class="crumb"><a href="/recupero">Recupero</a> / {{ wf.company.id }}</p>
+<h1>{{ wf.company.name }}</h1>
+<p class="muted">{{ wf.company.ccnl or 'CCNL non indicato' }} · {{ wf.company.employees }} dipendenti · DURC {{ 'sì' if wf.company.has_durc else ('no' if wf.company.has_durc is sameas false else 'n/d') }} · {{ rep.hires_scanned }} assunzioni × {{ rep.incentives_checked }} incentivi controllati</p>
+
+<section class="grid3" aria-label="Totali">
+  <div class="stat"><span class="k">Stima, requisiti verificati</span><span class="v">{{ totals.likely_eur | eur }}</span></div>
+  <div class="stat"><span class="k">Da verificare dal consulente</span><span class="v">{{ totals.to_check_eur | eur }}</span></div>
+  <div class="stat"><span class="k">Assunzioni con una proposta</span><span class="v">{{ totals.hires_with_proposal }} / {{ rep.hires_scanned }}</span></div>
+</section>
+
+<form method="get" class="filters">
+  <label>Aliquota contributiva a carico del datore (ipotesi)
+    <input type="number" name="rate" min="0.05" max="0.6" step="0.01" value="{{ '%.2f' % rate }}"></label>
+  <button type="submit">Ricalcola</button>
+  <a class="button secondary" href="/recupero/{{ wf.company.id }}.csv?rate={{ rate }}">Esporta CSV</a>
+</form>
+<p class="muted small">Le somme escludono le proposte respinte{% if totals.rejected %} ({{ totals.rejected }}){% endif %} e restano soggette alle condizioni che il datore deve attestare (es. nessun licenziamento nei sei mesi precedenti, de minimis). Stima: min(retribuzione lorda × aliquota × % di esonero, tetto mensile) × durata massima. L'aliquota reale dipende da settore e qualifica: è un'ipotesi modificabile, non un dato INPS.</p>
+
+{% if totals.by_incentive %}
+<section class="card">
+  <h2>Risparmio stimato per incentivo</h2>
+  {% set rows = totals.by_incentive.items() | list %}
+  {% set top = rows[0][1] if rows else 1 %}
+  <svg class="chart" viewBox="0 0 360 {{ 30 + rows|length * 46 }}" role="img" aria-labelledby="rt">
+    <title id="rt">Risparmio stimato per incentivo, in euro</title>
+    {% for name, v in rows %}{% set y = 8 + loop.index0 * 46 %}
+    <text class="lbl" x="8" y="{{ y + 12 }}">{{ name[:48] }}</text>
+    <line class="grid" x1="8" x2="8" y1="{{ y + 16 }}" y2="{{ y + 36 }}"/>
+    <rect class="bar-bg" x="8" y="{{ y + 20 }}" width="260" height="12" rx="6"/>
+    <rect class="bar-fg" x="8" y="{{ y + 20 }}" width="{{ '%.1f' % (260 * v / top) }}" height="12" rx="6"/>
+    <text class="val" x="352" y="{{ y + 31 }}" text-anchor="end">{{ v | eur }}</text>
+    {% endfor %}
+  </svg>
+</section>
+{% endif %}
+
+<div data-state="{{ state }}">
+{% for h in wf.hires %}
+  {% set fs = by_hire.get(h.id, []) %}
+  <section class="card hire" id="{{ h.id }}">
+    <h2>{{ h.full_name }} <span class="muted small">· {{ h.role or '' }} · assunzione {{ h.hire_date | fmt }} · {{ h.contract_type | fmt if h.contract_type else 'contratto n/d' }} · {{ h.workplace_region or 'regione n/d' }}</span></h2>
+    {% if not fs %}<p class="empty">Nessun incentivo applicabile secondo le regole lette. Nessuna azione.</p>{% endif %}
+    {% for f in fs %}
+      {% set rv = reviews.get(f.finding_id) %}
+      <details class="finding {{ 'proposed' if f.proposed else 'alt' }}" {% if f.proposed %}open{% endif %}>
+        <summary>
+          <span class="b {{ 'ok' if f.verdict == 'likely_eligible' else 'warn' }}">{{ 'probabile' if f.verdict == 'likely_eligible' else 'da verificare' }}</span>
+          <strong>{{ f.incentive_name }}</strong>
+          <span class="muted">{{ 'proposta' if f.proposed else 'alternativa' }}</span>
+          <span class="amount">{{ f.total_saving_eur | eur if f.total_saving_eur else 'importo n/d' }}</span>
+          {% if rv %}<span class="b {{ 'ok' if rv.decision == 'approvata' else 'bad' }}">{{ rv.decision }} da {{ rv.reviewer }}</span>{% if rv.evidence and f.rule_fingerprint not in rv.evidence %}<span class="b warn">regola aggiornata dopo la decisione</span>{% endif %}{% endif %}
+        </summary>
+        <div class="finding-body">
+          <p>{% if f.monthly_saving_eur %}{{ f.monthly_saving_eur | eur }} al mese × {{ f.months }} mesi.{% else %}Importo non calcolabile: manca la retribuzione o il tetto.{% endif %}
+             Fonte: <a href="{{ f.source.url }}" target="_blank" rel="noopener">{{ f.source.label }}</a>.</p>
+          {% if f.assessment.attestations %}<details class="attest"><summary><strong>Il datore deve attestare</strong> ({{ f.assessment.attestations|length }} condizioni generali)</summary>
+            <ul>{% for a in f.assessment.attestations %}<li>{{ a }}</li>{% endfor %}</ul></details>{% endif %}
+          {% if f.missing %}<p><strong>Da raccogliere o verificare:</strong> {{ f.missing | map('criterion') | join(', ') }}.</p>{% endif %}
+          <ul class="checks">
+          {% for c in f.assessment.checks %}
+            <li><span class="b {{ {'pass':'ok','fail':'bad','unknown':'off'}[c.outcome] }}">{{ {'pass':'sì','fail':'no','unknown':'?'}[c.outcome] }}</span>
+              <strong>{{ c.criterion | criterion }}</strong> — {{ c.detail | replace('_', ' ') }}
+              {% if c.citation %}<br><q>{{ c.citation.quote }}</q> <span class="anchor">§{{ c.citation.anchor }}</span>{% endif %}</li>
+          {% endfor %}
+          </ul>
+          {% if user %}
+          <form method="post" action="/recupero/{{ wf.company.id }}/decisione" class="decide">
+            <input type="hidden" name="csrf" value="{{ user.csrf }}">
+            <input type="hidden" name="finding_id" value="{{ f.finding_id }}">
+            <input type="hidden" name="rate" value="{{ rate }}">
+            <label class="grow">Nota <input name="note" maxlength="500" placeholder="es. verificato estratto contributivo"></label>
+            <button type="submit" name="decision" value="approvata">Approva</button>
+            <button type="submit" name="decision" value="respinta" class="secondary">Respingi</button>
+          </form>
+          {% else %}<p class="muted small"><a href="/accesso?next=/recupero/{{ wf.company.id }}">Accedi come consulente</a> per approvare o respingere.</p>{% endif %}
+          {% if rv and rv.note %}<p class="muted small">Nota: {{ rv.note }} ({{ rv.reviewed_at[:16].replace('T', ' ') }})</p>{% endif %}
+        </div>
+      </details>
+    {% endfor %}
+  </section>
+{% endfor %}
+</div>
+{% if rep.not_assessable %}<p class="muted small">Non valutati automaticamente perché gli atti non indicano da quando valgono le assunzioni: {{ rep.not_assessable | join(', ') }}.</p>{% endif %}
+<p class="muted small">Pre-verifica automatica, non consulenza: la decisione spetta a un consulente del lavoro (L. 12/1979).</p>
+{% endblock %}

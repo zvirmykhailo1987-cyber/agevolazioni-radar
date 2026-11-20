@@ -1,0 +1,31 @@
+{
+  "version": "2026-11-20",
+  "note": "Answer key written by hand from circulars 55, 56, 57, 72 and 82 (2026), not from the engine. expect: incentives the scan must surface for each hire, with the verdict class it should reach. Any other non-rejected finding counts against precision. 'review' = needs a consultant check (data the schema cannot hold, or conditions stated only in text). Disadvantage follows DM 17 ottobre 2017 as set in the example data (24+ months without regular paid work = molto svantaggiato; 6+ months = svantaggiato).",
+  "companies": {
+    "trattoria-puglia": {
+      "T01": {
+        "bonus-giovani-2026": "likely"
+      },
+      "T02": {
+        "bonus-zes-2026": "likely",
+        "bonus-donne-2026": "likely",
+        "esonero-madri-tre-figli-2026": "review"
+      },
+      "T03": {},
+      "T04": {}
+    },
+    "studio-milano": {
+      "S01": {
+        "bonus-giovani-2026": "likely"
+      },
+      "S02": {
+        "bonus-donne-2026": "likely",
+        "esonero-madri-tre-figli-2026": "review"
+      },
+      "S03": {
+        "incentivo-stabilizzazione-2026": "review"
+      },
+      "S04": {}
+    }
+  }
+}

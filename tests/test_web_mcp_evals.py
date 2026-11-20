@@ -235,3 +235,50 @@ def test_aggregate_and_regression_gate():
     assert evals.regressions(base, good) == {}
     bad = {"qa": {"summary": {"fact_recall": 0.9, "rejected_citations": 3}}, "extraction": {"field_accuracy": 0.9}}
     assert set(evals.regressions(base, bad)) == {"rejected_citations", "field_accuracy"}
+
+
+def test_eval_cli_end_to_end_with_fake_model(extracted_db, tmp_path, monkeypatch):
+    """The whole `radar-evals` command, offline: catches wiring bugs before a paid run."""
+    import shutil
+    import sys
+
+    for name in ("golden_qa.json", "golden_rules.json", "golden_recupero.json", "resolutions.json"):
+        shutil.copy(evals.EVALS / name, tmp_path / name)
+    monkeypatch.setattr(evals, "EVALS", tmp_path)
+    monkeypatch.setattr(evals, "Store", lambda: Store(extracted_db))
+    monkeypatch.setattr(evals, "anthropic_llm", lambda *a: FakeLLM(GOOD_ANSWER))
+    monkeypatch.setattr(evals.score_rules, "__defaults__", (tmp_path / "golden_rules.json",))
+    monkeypatch.setattr(evals.score_recupero, "__defaults__", (tmp_path / "golden_recupero.json",))
+    monkeypatch.setattr(evals.score_recupero_both, "__defaults__", (tmp_path / "resolutions.json",))
+    monkeypatch.setattr(evals.run_qa, "__defaults__", (tmp_path / "golden_qa.json", 1))
+    monkeypatch.setattr(sys, "argv", ["radar-evals", "--repeats", "1"])
+    evals.main()
+    saved = list((tmp_path / "results").glob("eval-*.json"))
+    assert len(saved) == 1
+    out = json.loads(saved[0].read_text(encoding="utf-8"))
+    assert {"qa", "extraction", "recupero"} <= set(out) and out["qa"]["repeats"] == 1
+
+
+def test_retrieval_recall_is_measured_per_split(extracted_db, tmp_path):
+    golden = tmp_path / "g.json"
+    golden.write_text(
+        json.dumps(
+            {
+                "items": [
+                    {
+                        "id": "a",
+                        "split": "dev",
+                        "q": "limite massimo di importo pari a 500 euro su base mensile",
+                        "must_include": ["500"],
+                        "gold": [["55", "1.p13"]],
+                    },
+                    {"id": "b", "split": "holdout", "q": "zzz", "must_include": ["x"], "gold": [["99", "1.p1"]]},
+                    {"id": "u", "q": "IRPEF", "unanswerable": True},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    out = evals.retrieval_recall(Store(extracted_db), golden)
+    assert out["dev"] == {"hits": 1, "of": 1, "recall": 1.0} and out["holdout"]["recall"] == 0.0
+    assert out["mode"] == "bm25"

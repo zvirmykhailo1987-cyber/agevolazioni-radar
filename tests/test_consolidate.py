@@ -67,3 +67,22 @@ def test_circular_is_primary_over_same_day_message_with_lower_number():
     ]
     m = consolidate(rows)["bonus-x"]
     assert m.primary["number"] == "56" and m.rule.monthly_cap_eur.value == 650, "circular introduces, message operates"
+
+
+def test_conditions_from_every_act_are_united_not_compared():
+    a = {
+        "value": [{"text": "nessun licenziamento", "applies_to": "datore"}],
+        "status": "verified",
+        "citation": {"anchor": "1.p1", "quote": "q"},
+    }
+    b = {
+        "value": [
+            {"text": "Nessun licenziamento", "applies_to": "datore"},
+            {"text": "madre di tre figli", "applies_to": "lavoratore"},
+        ],
+        "status": "verified",
+        "citation": {"anchor": "1.p1", "quote": "q"},
+    }
+    m = consolidate([row(55, "2026-05-14", other_conditions=a), row(1966, "2026-06-11", other_conditions=b)])["bonus-x"]
+    assert [c.text for c in m.rule.other_conditions.value] == ["nessun licenziamento", "madre di tre figli"]
+    assert m.differences == []

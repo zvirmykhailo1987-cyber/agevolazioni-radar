@@ -4,10 +4,23 @@
 <p class="crumb"><a href="/">Incentivi</a> / {{ rule.incentive_id }}</p>
 <h1>{{ rule.name }}</h1>
 <p class="muted">Introdotto da <a href="{{ meta.url }}" rel="noopener" target="_blank">{{ meta.label }}</a>{% if meta.sources|length > 1 %} · aggiornato da {% for s in meta.sources[1:] %}<a href="{{ s.url }}" rel="noopener" target="_blank">{{ s.doc_type }} n. {{ s.number }}</a>{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}</p>
-{% if meta.differences %}<div class="notice" role="note"><strong>Differenze tra atti da verificare</strong> (non applicate automaticamente):
-  <ul>{% for c in meta.differences %}<li>{{ labels.get(c.field, c.field) }}: {{ c.kept_in }}: {{ c.kept | fmt }} · {{ c.other_in }}: {{ c.other | fmt }}{% if c.other_citation %} <span class="anchor">§{{ c.other_citation.anchor }}</span>{% endif %}</li>{% endfor %}</ul></div>{% endif %}
+{% if meta.differences %}<section class="notice-box" id="differenze" role="note"><h2>Differenze tra atti</h2>
+  <p class="muted small">Un atto successivo indica un valore diverso. Non viene applicato da solo: decide il consulente, e la decisione resta nel registro.</p>
+  <ul class="diffs">{% for c in meta.differences %}<li>
+    <strong>{{ labels.get(c.field, c.field) }}</strong>: {{ c.kept_in }} → {{ c.kept | fmt }} · {{ c.other_in }} → {{ c.other | fmt }}{% if c.other_citation %} <span class="anchor">§{{ c.other_citation.anchor }}</span>{% endif %}
+    {% if c.resolution %}<p class="small"><span class="b ok">risolta</span> da {{ c.resolution.reviewer }}: {{ 'resta il valore del primo atto' if c.resolution.choice == 'kept' else 'si applica il valore dell’atto successivo' }}{% if c.resolution.note %} — {{ c.resolution.note }}{% endif %}</p>
+    {% elif demo_mode %}<p class="small muted">Nella demo pubblica la decisione è di sola lettura: l'account è condiviso e cambierebbe i risultati per tutti.</p>
+    {% elif user %}<form method="post" action="/incentivo/{{ rule.incentive_id }}/differenza" class="decide">
+      <input type="hidden" name="csrf" value="{{ user.csrf }}"><input type="hidden" name="diff_key" value="{{ c.key }}">
+      <label class="grow">Nota <input name="note" maxlength="500"></label>
+      <button type="submit" name="choice" value="kept">Tieni {{ c.kept_in.split(' del ')[0] }}</button>
+      <button type="submit" name="choice" value="other" class="secondary">Usa {{ c.other_in.split(' del ')[0] }}</button>
+    </form>
+    {% else %}<p class="small"><a href="/accesso?next=/incentivo/{{ rule.incentive_id }}">Accedi come consulente</a> per decidere.</p>{% endif %}
+  </li>{% endfor %}</ul></section>{% endif %}
 <div class="tablewrap" data-state="{{ 'partial' if rows|selectattr('status', 'ne', 'verified')|list else 'complete' }}">
-<table class="rule">
+<table class="rule fields">
+  <colgroup><col class="c-field"><col class="c-value"><col class="c-status"><col class="c-quote"><col class="c-act"></colgroup>
   <thead><tr><th scope="col">Campo</th><th scope="col">Valore</th><th scope="col">Stato</th><th scope="col">Dal testo</th><th scope="col">Atto</th></tr></thead>
   <tbody>
   {% for r in rows %}
@@ -22,5 +35,15 @@
   </tbody>
 </table>
 </div>
+<section class="card"><h2>Atti che descrivono l'incentivo</h2>
+  <ol class="timeline">{% for s in meta.sources %}<li><span class="anchor">{{ s.published_on | fmt }}</span> <a href="{{ s.url }}" target="_blank" rel="noopener">{{ s.doc_type }} n. {{ s.number }}</a>{% if loop.first %} <span class="b ok">introduce</span>{% endif %}</li>{% endfor %}</ol>
+  {% if diffs %}<h3>Modifiche al testo tra versioni</h3>
+    {% for doc_id, ds in diffs.items() %}{% for d in ds %}
+    <details><summary>Atto {{ doc_id }}: versione {{ d.from_version }} → {{ d.to_version }} ({{ d.changes|length }} righe)</summary>
+      <pre class="diff">{% for line in d.changes %}<span class="{{ 'add' if line.startswith('+') else 'del' }}">{{ line }}</span>
+{% endfor %}</pre></details>
+    {% endfor %}{% endfor %}
+  {% else %}<p class="muted small">Nessuna versione successiva: il testo non è cambiato da quando è stato letto.</p>{% endif %}
+</section>
 <p class="muted small">Dati parziali: i campi «non indicato» non compaiono negli atti letti e vanno verificati. «Scartato»: il modello ha indicato un valore ma la frase citata non compare nel paragrafo; il valore non viene usato.</p>
 {% endblock %}

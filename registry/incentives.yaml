@@ -1,0 +1,103 @@
+# Canonical incentives. Human-maintained: the model proposes an incentive_id per act, and only the
+# aliases listed here are merged. Anything else shows up as "unmapped" in the app for a person to file.
+# The legal basis is not written here: the app shows the extracted, citation-checked one.
+# group: giovani | donne | territorio | stabilizzazione | lavoratori | imprese
+# required: rule fields that must be read from the acts; if one is missing the pre-check says "to check"
+#   (default for every incentive: hire_from, contract_types)
+# side: datore (employer contributions) | lavoratore (employee contributions applied through payroll)
+incentives:
+  - id: bonus-giovani-2026
+    name: Bonus Giovani 2026
+    group: giovani
+    side: datore
+    aliases: [bonus-giovani-2026]
+    required: [hire_from, hire_to, contract_types, worker_max_age_exclusive, min_months_without_regular_job]
+  - id: bonus-donne-2026
+    name: Bonus Donne 2026
+    group: donne
+    side: datore
+    aliases: [bonus-donne-2026]
+    required: [hire_from, hire_to, contract_types, worker_gender, min_months_without_regular_job]
+  - id: bonus-zes-2026
+    name: Bonus ZES 2026
+    group: territorio
+    side: datore
+    aliases: [bonus-zes-2026]
+    required: [hire_from, hire_to, contract_types, worker_min_age, min_months_without_regular_job, employer_max_employees, zes_regions]
+  - id: incentivo-stabilizzazione-2026
+    name: Incentivo alla stabilizzazione dei giovani 2026
+    group: stabilizzazione
+    side: datore
+    aliases: [incentivo-stabilizzazione-2026]
+    required: [hire_from, hire_to, contract_types, worker_max_age_exclusive]
+  - id: esonero-madri-tre-figli-2026
+    name: Esonero per l'assunzione di madri di almeno tre figli
+    group: donne
+    side: datore
+    aliases: [esonero-donne-madri-tre-figli-2026]
+    required: [hire_from, contract_types, worker_gender, min_months_without_regular_job]
+  - id: bonus-giovani-dl60-2024
+    name: Bonus Giovani (decreto Coesione)
+    group: giovani
+    side: datore
+    aliases: [bonus-giovani-art22-c1-2024, bonus-giovani-art22-c1, bonus-giovani-2024]
+  - id: bonus-giovani-zes-dl60-2024
+    name: Bonus Giovani ZES (decreto Coesione)
+    group: territorio
+    side: datore
+    aliases: [bonus-giovani-art22-c3-zes-2025]
+  - id: bonus-donne-dl60-2024
+    name: Bonus Donne (decreto Coesione)
+    group: donne
+    side: datore
+    aliases: [bonus-donne-2025, bonus-donne-2024]
+  - id: bonus-zes-dl60-2024
+    name: Bonus ZES unica (decreto Coesione)
+    group: territorio
+    side: datore
+    aliases: [bonus-zes-unica-2024]
+  - id: esonero-autoimpiego-settori-strategici
+    name: Esonero per assunzioni in nuove imprese di settori strategici
+    group: imprese
+    side: datore
+    aliases: [esonero-autoimpiego-settori-strategici-dl-coesione-2024]
+  - id: decontribuzione-sud-pmi
+    name: Decontribuzione Sud PMI
+    group: territorio
+    side: datore
+    aliases: [decontribuzione-sud-pmi-2025, decontribuzione-sud]
+  - id: esonero-giovani-under-36
+    name: Esonero giovani under 36 (norma di interpretazione)
+    group: giovani
+    side: datore
+    aliases: [esonero-giovani-under-36]
+  - id: esonero-parita-di-genere
+    name: Esonero per la certificazione della parità di genere
+    group: imprese
+    side: datore
+    aliases: [esonero-parita-di-genere-2025]
+  - id: zfu-sisma-centro-italia
+    name: Zona Franca Urbana Sisma Centro Italia
+    group: territorio
+    side: datore
+    aliases: [zfu-sisma-centro-italia-2025, zfu-sisma-centro-italia-2026]
+  - id: sgravio-contratti-solidarieta
+    name: Sgravio per i contratti di solidarietà
+    group: lavoratori
+    side: datore
+    aliases: [sgravio-cds-difensivi-2024]
+  - id: esonero-aggregazione-imprese
+    name: Incentivi ai processi di aggregazione delle imprese
+    group: imprese
+    side: datore
+    aliases: [esonero-art-4-ter-dl-4-2024]
+  - id: esonero-marittimi
+    name: Esonero per i marittimi su navi del Registro internazionale
+    group: lavoratori
+    side: datore
+    aliases: [esonero-contributivo-marittimi-art-6-ter-dl-457-1997]
+  - id: bonus-mamme
+    name: Bonus mamme (riduzione dei contributi della lavoratrice)
+    group: donne
+    side: lavoratore
+    aliases: [bonus-mamme-2024-2026]

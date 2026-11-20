@@ -38,3 +38,8 @@ def test_hash_ignores_whitespace_only_changes():
     assert content_hash("a  b\n c") == content_hash("a b c")
     assert content_hash("a b c") != content_hash("a b d")
     assert normalize_space("&nbsp;x&amp;y ") == "x&y"
+
+
+def test_repeated_section_number_never_reuses_an_anchor():
+    html = "<p><strong>1. Premessa</strong></p><p>a</p><p><strong>1. Allegato</strong></p><p>b</p>"
+    assert [p.anchor for p in paragraphs(html)] == ["1.p1", "1.p2"]

@@ -59,6 +59,12 @@ def fake_inps(
     return client, calls
 
 
+@pytest.fixture(autouse=True)
+def isolated_app_db(tmp_path, monkeypatch):
+    """Never write the real app database from tests."""
+    monkeypatch.setenv("RADAR_APP_DB", str(tmp_path / "app.db"))
+
+
 @pytest.fixture(scope="session")
 def c55_detail() -> dict[str, Any]:
     return json.loads((FIX / "detail_c55.json").read_text(encoding="utf-8"))

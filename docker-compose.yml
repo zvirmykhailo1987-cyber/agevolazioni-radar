@@ -3,6 +3,10 @@ services:
     build: .
     ports: ["8040:8040"]
     env_file: [{path: .env.local, required: false}]
-    volumes: ["./data:/data:ro"]
+    environment:
+      RADAR_COOKIE_SECURE: "0"   # local http only
+    volumes:
+      - ./data/radar.duckdb:/data/kb/radar.duckdb:ro   # knowledge base: read-only for the app
+      - ./data/app:/data/app                          # users, reviews, LLM call log
     read_only: true
     tmpfs: ["/tmp"]

@@ -15,12 +15,15 @@ wrong. Policy:
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass, field
 from typing import Any
 
 from radar.rules import CITED_FIELDS, IncentiveRule, coverage
 
 FREE_TEXT = {"legal_basis", "application_procedure"}
+UNION = {"other_conditions"}  # conditions from every act apply: union them, never "differ"
 
 
 @dataclass
@@ -43,6 +46,7 @@ def it_date(iso: str) -> str:
 
 def source_of(row: dict[str, Any]) -> dict[str, Any]:
     return {
+        "doc_id": row.get("doc_id"),
         "doc_type": row["doc_type"],
         "number": row["number"],
         "published_on": row["published_on"],
@@ -64,6 +68,12 @@ def order_key(row: dict[str, Any]) -> tuple[str, int, int]:
     return (str(row["published_on"]), 0 if str(row["doc_type"]).startswith("Circ") else 1, num)
 
 
+def difference_key(incentive_id: str, field_name: str, other_value: Any, other_label: str) -> str:
+    """Identity of one difference: a decision applies to this exact pair of values, not to the field forever."""
+    raw = json.dumps([incentive_id, field_name, other_value, other_label], sort_keys=True, default=str)
+    return hashlib.sha256(raw.encode()).hexdigest()[:16]
+
+
 def consolidate(rule_rows: list[dict[str, Any]]) -> dict[str, Merged]:
     """``rule_rows`` as returned by ``kb.rules``."""
     out: dict[str, Merged] = {}
@@ -82,6 +92,12 @@ def consolidate(rule_rows: list[dict[str, Any]]) -> dict[str, Merged]:
             if new.status != "verified":
                 continue
             old = getattr(m.rule, f)
+            if f in UNION and old.status == "verified":
+                seen = {c.text.strip().lower() for c in old.value or []}
+                extra = [c for c in new.value or [] if c.text.strip().lower() not in seen]
+                if extra:
+                    fills[f] = old.model_copy(update={"value": [*(old.value or []), *extra]})
+                continue
             if old.status != "verified":
                 fills[f] = new.model_copy(deep=True)
                 m.field_sources[f] = src
@@ -94,6 +110,9 @@ def consolidate(rule_rows: list[dict[str, Any]]) -> dict[str, Merged]:
                         "other": new.value,
                         "other_in": src["label"],
                         "other_citation": new.citation.model_dump() if new.citation else None,
+                        "other_cited": new.model_dump(),
+                        "key": difference_key(rule.incentive_id, f, new.value, src["label"]),
+                        "other_source": src,
                     }
                 )
         m.rule = m.rule.model_copy(update=fills)

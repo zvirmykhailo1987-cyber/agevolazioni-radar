@@ -147,3 +147,102 @@ def test_unverified_condition_and_pending_differences_fail_closed():
     assert a.verdict == "needs_review" and outcomes(a)["only_zes_regions"] == "unknown"
     b = assess(rule(), HireProfile(**BASE), pending_differences=2)
     assert b.verdict == "needs_review" and outcomes(b)["differenze_tra_atti"] == "unknown"
+
+
+def test_window_with_one_bound_still_rejects_out_of_range_hires():
+    r = rule()
+    r = r.model_copy(update={"hire_from": r.hire_from.model_copy(update={"value": None})})
+    assert outcomes(assess(r, HireProfile(**{**BASE, "hire_date": date(2027, 3, 1)})))["hire_window"] == "fail"
+    assert outcomes(assess(r, HireProfile(**BASE)))["hire_window"] == "unknown"
+
+
+def test_worker_conditions_lower_the_verdict_employer_ones_are_attested():
+    from radar.rules import Cited, Condition
+
+    conds = Cited[list[Condition]](
+        value=[
+            Condition(text="madre di almeno tre figli", applies_to="lavoratore"),
+            Condition(text="nessun licenziamento nei sei mesi precedenti", applies_to="datore"),
+        ],
+        status="verified",
+    )
+    a = assess(rule().model_copy(update={"other_conditions": conds}), HireProfile(**BASE))
+    assert a.verdict == "needs_review" and outcomes(a)["condizione_lavoratore"] == "unknown"
+    assert a.attestations == ["nessun licenziamento nei sei mesi precedenti"]
+    employer_only = Cited[list[Condition]](value=[conds.value[1]], status="verified")
+    b = assess(rule().model_copy(update={"other_conditions": employer_only}), HireProfile(**BASE))
+    assert b.verdict == "likely_eligible" and b.attestations
+
+
+@pytest.mark.parametrize(
+    "text,field,value,expected",
+    [
+        ("Personale non dirigenziale", "job_level", "impiegato", "pass"),
+        ("Personale non dirigenziale", "job_level", "dirigente", "fail"),
+        ("Lavoratore svantaggiato o molto svantaggiato", "disadvantage", "svantaggiato", "pass"),
+        ("Lavoratore svantaggiato o molto svantaggiato", "disadvantage", "nessuno", "fail"),
+        ("Lavoratrici molto svantaggiate", "disadvantage", "svantaggiato", "fail"),
+        ("Lavoratrici molto svantaggiate", "disadvantage", "molto_svantaggiato", "pass"),
+        ("Esclusi apprendistato e lavoro domestico", "contract_type", "apprendistato", "fail"),
+        ("Esclusi apprendistato e lavoro domestico", "contract_type", "tempo_indeterminato", "pass"),
+        (
+            "Non spetta per la trasformazione a tempo indeterminato",
+            "contract_type",
+            "trasformazione_da_tempo_determinato",
+            "fail",
+        ),
+        ("Non spetta per la trasformazione a tempo indeterminato", "contract_type", "tempo_indeterminato", "pass"),
+    ],
+)
+def test_worker_conditions_settled_from_profile(text, field, value, expected):
+    from radar.eligibility import resolve_condition
+
+    hire = HireProfile(hire_date=date(2026, 6, 1), **{field: value})
+    assert resolve_condition(text, hire)[0] == expected
+    assert resolve_condition(text, HireProfile(hire_date=date(2026, 6, 1))) is None, "no data, no verdict"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # each of these would have been a wrong PASS with keyword matching (independent review, round 2)
+        "Esclusi personale dirigente, lavoro domestico, apprendistato e lavoro intermittente",
+        "In deroga al requisito dei 24 mesi, non spetta se il lavoratore era occupato",
+        "Spetta anche per trasformazioni; esclusi apprendistato",
+        "Lavoratore non svantaggiato",
+        "Personale non dirigenziale, salvo i quadri",
+        "Madre di almeno tre figli",
+        # two topics in one sentence: the first topic alone would say "pass" for an apprentice
+        "Lavoratore svantaggiato o molto svantaggiato, esclusi apprendistato",
+    ],
+)
+def test_ambiguous_conditions_stay_with_the_consultant(text):
+    from radar.eligibility import resolve_condition
+
+    hire = HireProfile(
+        hire_date=date(2026, 6, 1),
+        job_level="impiegato",
+        disadvantage="molto_svantaggiato",
+        contract_type="apprendistato",
+    )
+    assert resolve_condition(text, hire) is None
+
+
+def test_required_criterion_missing_from_the_acts_is_unknown():
+    r = rule()
+    r = r.model_copy(update={"worker_max_age_exclusive": r.worker_max_age_exclusive.model_copy(update={"value": None})})
+    a = assess(r, HireProfile(**BASE), required=("worker_max_age_exclusive",))
+    assert a.verdict == "needs_review" and outcomes(a)["manca:worker_max_age_exclusive"] == "unknown"
+    assert assess(r, HireProfile(**BASE)).verdict == "likely_eligible", "without the registry it would silently pass"
+
+
+def test_employer_tagged_condition_is_still_checked_against_data():
+    from radar.rules import Cited, Condition
+
+    cond = Cited[list[Condition]](
+        value=[Condition(text="Esclusi lavoro domestico e apprendistato", applies_to="datore")], status="verified"
+    )
+    a = assess(
+        rule().model_copy(update={"other_conditions": cond}), HireProfile(**{**BASE, "contract_type": "apprendistato"})
+    )
+    assert a.verdict == "not_eligible" and a.attestations == []

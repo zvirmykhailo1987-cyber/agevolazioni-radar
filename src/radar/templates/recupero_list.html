@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Recupero · Agevolazioni Radar{% endblock %}
+{% block content %}
+<h1>Recupero</h1>
+<p class="lead">Per ogni assunzione dell'azienda il codice confronta il profilo con ogni incentivo e stima il risparmio contributivo. Ogni proposta passa dal consulente: approvata o respinta, con nota e traccia.</p>
+<ul class="cards">
+{% for c in companies %}
+  <li class="card">
+    <h2><a href="/recupero/{{ c.id }}">{{ c.wf.company.name }}</a></h2>
+    <p class="muted">{{ c.wf.company.ccnl or 'CCNL non indicato' }} · {{ c.wf.company.employees }} dipendenti · {{ c.wf.hires|length }} assunzioni da analizzare</p>
+    <a class="button" href="/recupero/{{ c.id }}">Analizza</a>
+  </li>
+{% endfor %}
+</ul>
+<p class="muted small">Aziende e persone di esempio, inventate. Il formato riprende i campi di un'API payroll pubblica (azienda, dipendenti, assunzioni).</p>
+{% endblock %}

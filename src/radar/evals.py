@@ -24,12 +24,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from radar.paths import HOME
 from radar.rag import Answer, Answerer, answer, anthropic_llm
 from radar.rules import IncentiveRule
 from radar.store import Store
 from radar.text import canon
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = HOME
 EVALS = ROOT / "evals"
 
 
@@ -155,8 +156,16 @@ LOWER_IS_BETTER = {"rejected_citations"}
 
 def regressions(base: dict[str, Any], new: dict[str, Any]) -> dict[str, tuple[Any, Any]]:
     """Metrics that got worse vs a baseline result file (QA means, extraction accuracy, rejections)."""
-    b = {**base["qa"]["summary"], "field_accuracy": base["extraction"]["field_accuracy"]}
-    n = {**new["qa"]["summary"], "field_accuracy": new["extraction"]["field_accuracy"]}
+
+    def flat(r: dict[str, Any]) -> dict[str, Any]:
+        rec = r.get("recupero", {})
+        return {
+            **r["qa"]["summary"],
+            "field_accuracy": r["extraction"]["field_accuracy"],
+            **{f"recupero_{k}": rec[k] for k in ("precision", "recall", "verdict_accuracy") if k in rec},
+        }
+
+    b, n = flat(base), flat(new)
     worse = {}
     for k, v in n.items():
         if k.endswith(("_min", "_max")) or k.startswith("n_") or k not in b:
@@ -200,6 +209,24 @@ def score_rules(rule_rows: list[dict[str, Any]], golden: Path = EVALS / "golden_
     return {"field_accuracy": round(right / total, 3) if total else 0.0, "fields": total, "rules": per}
 
 
+def retrieval_recall(store: Store, golden: Path = EVALS / "golden_qa.json", k: int = 10) -> dict[str, Any]:
+    """Free, deterministic: is a gold paragraph among the top-k retrieved, per split (no LLM)."""
+    items = [i for i in json.loads(golden.read_text(encoding="utf-8"))["items"] if not i.get("unanswerable")]
+    assert store.retriever is not None, "empty knowledge base"
+    out: dict[str, Any] = {}
+    for split in ("dev", "holdout"):
+        rows = [i for i in items if i.get("split", "dev") == split]
+        hits = 0
+        for it in rows:
+            gold = {(n, a) for n, a in it["gold"]}
+            top = [store.passages[d.metadata["i"]] for d in store.retriever.invoke(it["q"])][:k]
+            hits += any((number_of(p.doc_label), p.anchor) in gold for p in top)
+        out[split] = {"hits": hits, "of": len(rows), "recall": round(hits / len(rows), 3) if rows else 0.0}
+    out["k"] = k
+    out["mode"] = "hybrid" if store.embedder is not None else "bm25"
+    return out
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Run evals and save a dated result file")
     ap.add_argument("--model", default=None, help="Claude model id for answers")
@@ -208,11 +235,14 @@ def main() -> None:
     args = ap.parse_args()
     store = Store()
     llm = anthropic_llm(args.model) if args.model else anthropic_llm()
+    # Deterministic, free scores first: a bug there must fail before any paid API call.
     out: dict[str, Any] = {
         "at": datetime.now(UTC).isoformat(timespec="seconds"),
-        "qa": run_qa(store, llm, repeats=args.repeats),
         "extraction": score_rules(store.rule_rows),
+        "recupero": score_recupero_both(store),
+        "retrieval": retrieval_recall(store),
     }
+    out["qa"] = run_qa(store, llm, repeats=args.repeats)
     (EVALS / "results").mkdir(parents=True, exist_ok=True)
     path = EVALS / "results" / f"eval-{datetime.now(UTC):%Y%m%d-%H%M}.json"
     path.write_text(json.dumps(out, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
@@ -222,6 +252,8 @@ def main() -> None:
                 "qa": out["qa"]["summary"],
                 "holdout": out["qa"]["by_split"]["holdout"],
                 "extraction": out["extraction"]["field_accuracy"],
+                "recupero": {k: v for k, v in out["recupero"].items() if k not in ("issues", "issues_after")},
+                "retrieval": out["retrieval"],
                 "usage": out["qa"]["usage"],
                 "file": str(path),
             },
@@ -233,6 +265,66 @@ def main() -> None:
         print("REGRESSIONS:" if worse else "no regression vs baseline", worse or "")
         if worse:
             raise SystemExit(1)
+
+
+def score_recupero_both(store: Store, resolutions: Path = EVALS / "resolutions.json") -> dict[str, Any]:
+    """Agent score as the system ships (the headline), then, as a diagnostic only, after the consultant
+    decisions listed in resolutions.json. Those decisions are written by the same author as the answer
+    key, so the second number is not independent evidence."""
+    before = score_recupero(store)
+    wanted = {
+        (r["incentive_id"], r["field"]): r["choice"]
+        for r in json.loads(resolutions.read_text(encoding="utf-8"))["resolutions"]
+    }
+    decisions = {
+        d["key"]: {"id": f"eval-{n}", "choice": wanted[(iid, d["field"])], "reviewer": "eval", "note": ""}
+        for iid, m in store.merged.items()
+        for n, d in enumerate(m.differences)
+        if (iid, d["field"]) in wanted
+    }
+    store.apply_resolutions(decisions, version="eval")
+    after = score_recupero(store)
+    return {
+        **before,
+        "after_review": {k: v for k, v in after.items() if k != "issues"},
+        "issues_after": after["issues"],
+    }
+
+
+def score_recupero(store: Store, golden: Path = EVALS / "golden_recupero.json") -> dict[str, Any]:
+    """Agent eval: findings vs a hand-written answer key (precision, recall, verdict accuracy)."""
+    from radar.recupero import example_companies, load_workforce, scan
+
+    spec = json.loads(golden.read_text(encoding="utf-8"))["companies"]
+    files = example_companies()
+    tp = fp = fn = verdict_ok = 0
+    detail = []
+    for cid, hires in spec.items():
+        report = scan(store, load_workforce(files[cid]))
+        found = {(f.hire_id, f.incentive_id): f.verdict for f in report.findings}
+        expected = {(h, i): v for h, incs in hires.items() for i, v in incs.items()}
+        for key, want in expected.items():
+            got = found.get(key)
+            if got is None:
+                fn += 1
+                detail.append({"company": cid, "hire": key[0], "incentive": key[1], "result": "missed"})
+                continue
+            tp += 1
+            ok = (want == "likely") == (got == "likely_eligible")
+            verdict_ok += ok
+            if not ok:
+                detail.append({"company": cid, "hire": key[0], "incentive": key[1], "result": f"verdict {got}"})
+        for key, got in found.items():
+            if key not in expected:
+                fp += 1
+                detail.append({"company": cid, "hire": key[0], "incentive": key[1], "result": f"extra ({got})"})
+    return {
+        "precision": round(tp / (tp + fp), 3) if tp + fp else 0.0,
+        "recall": round(tp / (tp + fn), 3) if tp + fn else 0.0,
+        "verdict_accuracy": round(verdict_ok / tp, 3) if tp else 0.0,
+        "expected": tp + fn,
+        "issues": detail,
+    }
 
 
 if __name__ == "__main__":

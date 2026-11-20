@@ -94,15 +94,16 @@ def paragraphs(html_text: str) -> list[Paragraph]:
     parser.feed(html_text)
     parser.close()
     out: list[Paragraph] = []
-    section, heading, n = "0", "", 0
+    section, heading = "0", ""
+    counters: dict[str, int] = {}  # a section number can repeat (annexes): keep counting, never reuse an anchor
     for text, bold in parser.blocks:
         m = _HEADING.match(text)
         if bold and m and len(text) < 220:
-            section, heading, n = m.group(1), text, 0
+            section, heading = m.group(1), text
             continue
         if section == "0" and (text.upper() == "INDICE" or m):
             continue  # table of contents: repeats the headings without bold
-        n += 1
+        n = counters[section] = counters.get(section, 0) + 1
         out.append(Paragraph(f"{section}.p{n}", section, heading, text))
     return out
 

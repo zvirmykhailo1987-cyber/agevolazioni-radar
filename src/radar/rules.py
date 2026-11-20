@@ -31,6 +31,14 @@ class Cited[T](BaseModel):
     status: Literal["verified", "unverified", "absent"] = "absent"
 
 
+class Condition(BaseModel):
+    text: str = Field(description="short Italian phrase")
+    applies_to: Literal["lavoratore", "datore"] = Field(
+        description="lavoratore: about the hired person (e.g. mother of three, disadvantaged worker); "
+        "datore: about the employer or general (no dismissals, de minimis, Deggendorf, non-cumulability)"
+    )
+
+
 ContractType = Literal[
     "tempo_indeterminato",
     "trasformazione_da_tempo_determinato",
@@ -72,6 +80,10 @@ class IncentiveRule(BaseModel):
     requires_net_job_increase: Cited[bool] = Field(default_factory=Cited)
     requires_durc: Cited[bool] = Field(default_factory=Cited)
     requires_ccnl_compliance: Cited[bool] = Field(default_factory=Cited)
+    other_conditions: Cited[list[Condition]] = Field(
+        default_factory=Cited,
+        description="eligibility conditions not covered by the other fields",
+    )
     application_procedure: Cited[str] = Field(default_factory=Cited)
 
 
@@ -112,7 +124,7 @@ MONTHS = [
     "novembre",
     "dicembre",
 ]
-FREE_TEXT_FIELDS = {"legal_basis", "application_procedure"}
+FREE_TEXT_FIELDS = {"legal_basis", "application_procedure", "other_conditions"}
 
 
 def value_in_quote(name: str, value: Any, quote: str) -> bool:

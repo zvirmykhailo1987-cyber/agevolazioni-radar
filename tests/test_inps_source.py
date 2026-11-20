@@ -90,3 +90,16 @@ def test_polite_delay_between_requests():
     client.get_json(listing_url(0))
     client.get_json(listing_url(1))
     assert slept == [1.5]
+
+
+@pytest.mark.parametrize(
+    "subject",
+    [
+        "Agevolazioni per la frequenza di asili nido pubblici e privati",
+        "Contributo per sostenere le spese relative alle sessioni di psicoterapia",
+        "Gestioni artigiani ed esercenti attività commerciali. Esonero parziale",
+        "Bonus nuovi nati di cui all'articolo 1, commi da 206 a 208",
+    ],
+)
+def test_family_and_self_employed_benefits_are_out_of_scope(subject):
+    assert is_relevant(subject) is False

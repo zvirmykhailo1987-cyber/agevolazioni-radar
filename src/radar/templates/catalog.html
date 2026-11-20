@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Catalogo · Agevolazioni Radar{% endblock %}
+{% block content %}
+<h1>Catalogo degli incentivi</h1>
+<p class="lead">{{ total }} incentivi letti dalle circolari e dai messaggi INPS dal 2025, uniti per incentivo con il registro canonico.</p>
+<form method="get" class="filters" role="search">
+  <label class="grow">Cerca <input name="q" value="{{ q }}" maxlength="80" placeholder="es. donne, ZES, stabilizzazione"></label>
+  <label>Gruppo <select name="group"><option value="">tutti</option>{% for g in groups %}<option value="{{ g }}" {% if g == group %}selected{% endif %}>{{ g }}</option>{% endfor %}</select></label>
+  <label>Stato <select name="status"><option value="">tutti</option>{% for s in ['attiva','scaduta','futura','da verificare'] %}<option value="{{ s }}" {% if s == status %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></label>
+  <label>Contributi <select name="side"><option value="">tutti</option><option value="datore" {% if side == 'datore' %}selected{% endif %}>del datore</option><option value="lavoratore" {% if side == 'lavoratore' %}selected{% endif %}>del lavoratore</option></select></label>
+  <button type="submit">Filtra</button>
+</form>
+<div data-state="{{ state }}">
+{% if not items %}<p class="empty">Nessun incentivo corrisponde ai filtri. <a href="/catalogo">Azzera i filtri</a>.</p>{% endif %}
+<ul class="list">
+{% for i in items %}
+  <li class="row">
+    <div>
+      <a class="title" href="/incentivo/{{ i.incentive_id }}">{{ i.name }}</a>
+      <p class="muted">{{ i.source }}{% if i.sources|length > 1 %} · +{{ i.sources|length - 1 }} {{ 'atto' if i.sources|length == 2 else 'atti' }}{% endif %}{% if i.hire_from or i.hire_to %} · assunzioni {{ i.hire_from | fmt if i.hire_from else '…' }} – {{ i.hire_to | fmt if i.hire_to else '…' }}{% endif %}</p>
+    </div>
+    <div class="badges">
+      <span class="b {{ {'attiva':'ok','scaduta':'off','futura':'ok','da verificare':'warn'}[i.status] }}">{{ i.status }}</span>
+      <span class="b off">{{ i.group }}</span>
+      {% if i.differences %}<span class="b warn">{{ i.differences }} da verificare</span>{% endif %}
+      <span class="b ok">{{ i.fields.verified }} campi verificati</span>
+    </div>
+  </li>
+{% endfor %}
+</ul>
+</div>
+{% endblock %}

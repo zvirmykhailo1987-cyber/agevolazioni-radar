@@ -64,6 +64,12 @@ table.rule { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
 .rule thead th { background: var(--surface); font-size: 0.85rem; color: var(--muted); font-weight: 600; }
 .rule tbody th { font-weight: 600; width: 22%; }
 .rule tr.st-absent td, .rule tr.st-absent th { color: var(--muted); }
+/* field table: the quote is the evidence, so it gets the room */
+table.fields { table-layout: fixed; }
+.fields .c-field { width: 17%; } .fields .c-value { width: 22%; } .fields .c-status { width: 13%; }
+.fields .c-quote { width: 38%; } .fields .c-act { width: 10%; }
+.fields tbody th { width: auto; }
+.fields q { line-height: 1.5; }
 q { quotes: "«" "»"; font-style: italic; }
 .nowrap { white-space: nowrap; }
 .anchor { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
@@ -80,6 +86,15 @@ button:active { transform: translateY(1px); }
 .chart .grid { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 2 3; }
 .chart .tick { fill: var(--muted); font-size: 10px; }
 .chart .lbl { fill: var(--text); font-size: 12px; font-weight: 600; }
+.chart .line-a, .chart .line-b { fill: none; stroke-width: 2.5; }
+.chart .line-a { stroke: var(--accent); }
+.chart .line-b { stroke: var(--warn); stroke-dasharray: 5 3; }
+.chart .dot-a { fill: var(--accent); }
+.chart .dot-b { fill: var(--warn); }
+.legend { font-size: 0.85rem; color: var(--muted); display: flex; gap: var(--s3); align-items: center; flex-wrap: wrap; }
+.key { display: inline-block; width: 18px; height: 3px; border-radius: 2px; }
+.key.a { background: var(--accent); }
+.key.b { background: var(--warn); }
 .chart .val { fill: var(--text); font-size: 12px; font-weight: 700; }
 .bar-bg { fill: var(--off-bg); }
 .bar-fg { fill: var(--accent); }
@@ -98,9 +113,57 @@ button:active { transform: translateY(1px); }
 .empty { color: var(--muted); padding: var(--s5); background: var(--surface); border-radius: var(--r); }
 .foot { border-top: 1px solid var(--line); padding-top: var(--s5); padding-bottom: var(--s6); color: var(--muted); font-size: 0.875rem; }
 .foot p { margin: 0 0 var(--s2); }
+.filters { display: flex; flex-wrap: wrap; gap: var(--s3); align-items: end; margin: var(--s4) 0; }
+.filters label { display: flex; flex-direction: column; gap: var(--s1); font-weight: 600; font-size: 0.9rem; min-width: 150px; }
+.grow { flex: 1 1 240px; }
+.button { display: inline-flex; align-items: center; justify-content: center; font-weight: 600; background: var(--accent); color: var(--accent-ink); border-radius: 8px; padding: var(--s2) var(--s5); min-height: 44px; text-decoration: none; transition: filter .18s var(--ease); }
+.button:hover { filter: brightness(1.08); }
+.secondary, .button.secondary { background: var(--surface); color: var(--text); border: 1px solid var(--line-strong); }
+.inline { display: inline; margin: 0; }
+button.link { background: none; color: var(--muted); border: 0; padding: var(--s1) var(--s3); min-height: auto; font-weight: 400; }
+button.link:hover { color: var(--text); filter: none; }
+.cards { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); }
+.cards .card { margin: 0; display: flex; flex-direction: column; gap: var(--s3); align-items: flex-start; }
+.cards h2 { margin: 0; }
+.hire h2 { font-size: 1.05rem; }
+.finding { border: 1px solid var(--line); border-radius: var(--r); margin: var(--s3) 0; background: var(--bg); }
+.finding.proposed { border-color: var(--line-strong); box-shadow: 0 1px 2px rgba(16, 24, 40, .05); }
+.finding summary { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; padding: var(--s3) var(--s4); cursor: pointer; list-style: none; }
+.finding summary::-webkit-details-marker { display: none; }
+.finding summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: var(--r); }
+.amount { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+.finding-body { padding: 0 var(--s4) var(--s4); border-top: 1px solid var(--line); }
+.decide { display: flex; flex-wrap: wrap; gap: var(--s3); align-items: end; margin-top: var(--s3); }
+.decide label { display: flex; flex-direction: column; gap: var(--s1); font-weight: 600; font-size: 0.9rem; }
+.narrow { max-width: 420px; grid-template-columns: minmax(0, 1fr); }
+.timeline { padding-left: var(--s5); display: grid; gap: var(--s2); }
+.diff { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 0.8rem; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--surface); padding: var(--s3); border-radius: var(--r); max-height: 360px; overflow: auto; }
+.diff .add { color: var(--ok); }
+.diff .del { color: var(--bad); }
+.notice-box { background: var(--warn-bg); border-radius: var(--r); padding: var(--s4) var(--s5); margin: var(--s4) 0; }
+.notice-box h2 { margin-top: 0; color: var(--warn); }
+.diffs { padding-left: var(--s5); display: grid; gap: var(--s3); }
+.attest { margin: var(--s3) 0; }
+.attest summary { cursor: pointer; }
+.attest ul { margin: var(--s2) 0 0; padding-left: var(--s5); display: grid; gap: var(--s1); font-size: 0.9rem; }
+.small-v { font-size: 1.3rem !important; }
+h3 { font-size: 1rem; margin: var(--s5) 0 var(--s2); }
 @media (max-width: 720px) {
+  .cards { grid-template-columns: minmax(0, 1fr); }
+  .amount { margin-left: 0; width: 100%; }
   .grid3, .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .form { grid-template-columns: minmax(0, 1fr); padding: var(--s4); }
   .ask { flex-direction: column; }
   .rule tbody th { width: auto; }
+  /* field table on a phone: one card per field instead of five squeezed columns */
+  .fields colgroup, .fields thead { display: none; }
+  .fields, .fields tbody, .fields tr { display: block; width: 100%; }
+  .fields tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s1) var(--s3); padding: var(--s3); border-bottom: 1px solid var(--line); }
+  .fields tbody th, .fields td { display: block; padding: 0; border: 0; }
+  .fields tbody th { grid-column: 1; }
+  .fields td:nth-of-type(1) { grid-column: 1 / -1; grid-row: 2; font-weight: 600; }
+  .fields td:nth-of-type(2) { grid-column: 2; grid-row: 1; }
+  .fields td:nth-of-type(3) { grid-column: 1 / -1; font-size: 0.9rem; }
+  .fields td:nth-of-type(4) { grid-column: 1 / -1; }
+  .fields td:empty { display: none; }
 }

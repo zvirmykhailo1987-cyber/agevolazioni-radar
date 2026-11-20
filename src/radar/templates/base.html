@@ -12,9 +12,15 @@
   <div class="wrap top-in">
     <a class="brand" href="/"><span class="dot" aria-hidden="true"></span>Agevolazioni Radar</a>
     <nav aria-label="Principale">
-      <a href="/" {% if request.url.path == '/' %}aria-current="page"{% endif %}>Incentivi</a>
-      <a href="/verifica" {% if request.url.path == '/verifica' %}aria-current="page"{% endif %}>Pre-verifica</a>
-      <a href="/chiedi" {% if request.url.path == '/chiedi' %}aria-current="page"{% endif %}>Chiedi</a>
+      {% set p = request.url.path %}
+      <a href="/" {% if p == '/' %}aria-current="page"{% endif %}>Panoramica</a>
+      <a href="/catalogo" {% if p.startswith('/catalogo') or p.startswith('/incentivo') %}aria-current="page"{% endif %}>Catalogo</a>
+      <a href="/recupero" {% if p.startswith('/recupero') %}aria-current="page"{% endif %}>Recupero</a>
+      <a href="/verifica" {% if p == '/verifica' %}aria-current="page"{% endif %}>Pre-verifica</a>
+      <a href="/chiedi" {% if p == '/chiedi' %}aria-current="page"{% endif %}>Chiedi</a>
+      <a href="/stato" {% if p == '/stato' %}aria-current="page"{% endif %}>Stato</a>
+      {% if user %}<form method="post" action="/esci" class="inline"><input type="hidden" name="csrf" value="{{ user.csrf }}"><button class="link" type="submit">Esci ({{ user.username }})</button></form>
+      {% else %}<a href="/accesso" {% if p == '/accesso' %}aria-current="page"{% endif %}>Accedi</a>{% endif %}
     </nav>
   </div>
 </header>

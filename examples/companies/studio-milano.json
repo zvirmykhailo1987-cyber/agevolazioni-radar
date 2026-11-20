@@ -1,0 +1,72 @@
+{
+  "company": {
+    "id": "studio-milano",
+    "name": "Studio Digitale Navigli Srl (dati di esempio)",
+    "ccnl": "Commercio e terziario",
+    "employees": 40,
+    "has_durc": true,
+    "applies_ccnl": true
+  },
+  "hires": [
+    {
+      "id": "S01",
+      "full_name": "Andrea Colombo",
+      "role": "Sviluppatore",
+      "birth_date": "1997-02-10",
+      "gender": "M",
+      "hire_date": "2026-07-01",
+      "contract_type": "tempo_indeterminato",
+      "workplace_region": "Lombardia",
+      "months_without_regular_job": 25,
+      "gross_monthly_eur": 2600,
+      "net_job_increase": true,
+      "job_level": "impiegato",
+      "disadvantage": "molto_svantaggiato"
+    },
+    {
+      "id": "S02",
+      "full_name": "Elena Ricci",
+      "role": "Product designer",
+      "birth_date": "1988-06-18",
+      "gender": "F",
+      "hire_date": "2026-09-01",
+      "contract_type": "tempo_indeterminato",
+      "workplace_region": "Lombardia",
+      "months_without_regular_job": 30,
+      "gross_monthly_eur": 2800,
+      "net_job_increase": true,
+      "job_level": "impiegato",
+      "disadvantage": "molto_svantaggiato"
+    },
+    {
+      "id": "S03",
+      "full_name": "Marco Ferrari",
+      "role": "Analista dati",
+      "birth_date": "1993-11-05",
+      "gender": "M",
+      "hire_date": "2026-09-01",
+      "contract_type": "trasformazione_da_tempo_determinato",
+      "workplace_region": "Lombardia",
+      "months_without_regular_job": 0,
+      "gross_monthly_eur": 2400,
+      "net_job_increase": true,
+      "job_level": "impiegato",
+      "disadvantage": "nessuno"
+    },
+    {
+      "id": "S04",
+      "full_name": "Stefano Romano",
+      "role": "Account manager",
+      "birth_date": "1981-04-22",
+      "gender": "M",
+      "hire_date": "2026-05-04",
+      "contract_type": "tempo_indeterminato",
+      "workplace_region": "Lombardia",
+      "months_without_regular_job": 3,
+      "gross_monthly_eur": 3000,
+      "net_job_increase": true,
+      "job_level": "impiegato",
+      "disadvantage": "nessuno"
+    }
+  ]
+}

@@ -18,7 +18,7 @@ from typing import Any, Protocol
 from radar.rules import IncentiveRule, verify
 from radar.text import Paragraph
 
-PROMPT_VERSION = "extract-v4"
+PROMPT_VERSION = "extract-v6"
 DEFAULT_MODEL = os.environ.get("RADAR_EXTRACT_MODEL", "claude-sonnet-5-5")
 
 SYSTEM = """Sei un analista di normativa previdenziale italiana. Leggi una circolare o un messaggio INPS,
@@ -33,11 +33,31 @@ Regole ferree:
 4. worker_max_age_exclusive: l'eta' che il lavoratore NON deve aver compiuto (es. "non abbiano compiuto 35 anni" -> 35).
 5. Se un requisito ha piu' alternative (es. "da almeno ventiquattro mesi" oppure "da almeno dodici mesi"
    per categorie particolari), riporta quello del caso generale, cioe' la prima condizione enunciata.
-6. Se il documento non descrive alcun incentivo, restituisci una lista vuota."""
+6. other_conditions: elenca le condizioni di ammissibilita' che gli altri campi non possono esprimere,
+   ognuna con applies_to:
+   - "lavoratore" se riguarda la persona assunta (es. "madre di almeno tre figli minori",
+     "rapporto a termine instaurato entro il 30 aprile 2026"); non ripetere qui eta', mesi senza impiego,
+     genere o tipo di contratto, che hanno gia' un campo;
+   - "datore" se riguarda il datore o e' una condizione generale (es. nessun licenziamento nei sei mesi
+     precedenti, regime de minimis, clausola Deggendorf, non cumulabilita').
+7. Se il documento non descrive alcun incentivo, restituisci una lista vuota."""
+
+
+def registry_hint() -> str:
+    """Known incentive ids, so the same incentive gets the same id in every act."""
+    from radar.registry import Registry
+
+    reg = Registry.load()
+    rows = [f"- {e.id}: {e.name}" for e in reg.entries.values()]
+    head = (
+        "INCENTIVI GIA' NOTI (usa questo incentive_id se il documento parla dello stesso incentivo;\n"
+        "altrimenti proponi un id nuovo in kebab-case):\n"
+    )
+    return head + "\n".join(rows)
 
 
 def render(paras: list[Paragraph], title: str) -> str:
-    lines = [f"DOCUMENTO: {title}", ""]
+    lines = [registry_hint(), "", f"DOCUMENTO: {title}", ""]
     last = None
     for p in paras:
         if p.heading != last and p.heading:
@@ -76,7 +96,7 @@ class AnthropicExtractor:
     def __call__(self, system: str, user: str, tool: dict[str, Any]) -> tuple[dict[str, Any], dict[str, int]]:
         from radar.llm import call_json
 
-        return call_json(system, user, tool["input_schema"], self.model, self.max_tokens)
+        return call_json(system, user, tool["input_schema"], self.model, self.max_tokens, purpose="extract")
 
 
 @dataclass

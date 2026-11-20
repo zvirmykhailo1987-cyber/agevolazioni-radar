@@ -26,7 +26,7 @@ internal product that their data team could adopt: knowledge platform + agent in
 - Output: findings table, totals by incentive, export CSV.
 - Agent eval: a synthetic company with a hand-built answer key → precision / recall of findings and saving error.
 
-## 3. Product UI (IT, with EN toggle)
+## 3. Product UI (Italian: the users are Italian payroll consultants; docs are English)
 - Panoramica: KB health (freshness, last runs), eval trend, totals.
 - Catalogo: incentives with filters (group, status, region), search.
 - Incentive detail: rule table with citations, sources timeline, text diff between versions, differences to review

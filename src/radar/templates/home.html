@@ -34,11 +34,20 @@
 </section>
 {% endif %}
 
+<section class="cards-2">
+  <h2>Cosa si può fare</h2>
+  <ul class="cards">
+    <li class="card"><h2><a href="/recupero">Recupero</a></h2><p class="muted">Analizza le assunzioni di un'azienda contro tutti gli incentivi attivi e stima il risparmio, con prove e approvazione del consulente.</p><a class="button" href="/recupero">Apri Recupero</a></li>
+    <li class="card"><h2><a href="/catalogo">Catalogo</a></h2><p class="muted">{{ incentives|length }} incentivi con regole, citazioni, atti successivi e differenze da verificare.</p><a class="button secondary" href="/catalogo">Apri il catalogo</a></li>
+  </ul>
+</section>
+
 <section>
-  <h2>Incentivi estratti</h2>
-  {% if not incentives %}<p class="empty">Nessun incentivo estratto: eseguire la fase di estrazione.</p>{% endif %}
+  <h2>Incentivi attivi</h2>
+  {% set active = incentives | selectattr('status', 'equalto', 'attiva') | list %}
+  {% if not active %}<p class="empty">Nessun incentivo attivo nella base di conoscenza.</p>{% endif %}
   <ul class="list">
-  {% for i in incentives %}
+  {% for i in active %}
     <li class="row">
       <div>
         <a class="title" href="/incentivo/{{ i.incentive_id }}">{{ i.name }}</a>
@@ -52,5 +61,6 @@
     </li>
   {% endfor %}
   </ul>
+  <p><a href="/catalogo">Tutti gli incentivi, anche scaduti</a></p>
 </section>
 {% endblock %}

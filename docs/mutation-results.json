@@ -1,7 +1,7 @@
 {
   "measured": "2026-11-20",
-  "bugs_injected": 24,
-  "caught": 24,
+  "bugs_injected": 38,
+  "caught": 38,
   "results": [
     {
       "bug": "Citation gate accepts a value whose quote is not in the paragraph",
@@ -133,7 +133,7 @@
       "bug": "Per-IP limit on paid questions removed",
       "file": "src/radar/web.py",
       "caught": true,
-      "caught_by": "tests/test_web_mcp_evals.py::test_rate_limiter_per_ip_and_daily"
+      "caught_by": "tests/test_product.py::test_wrong_password_and_login_rate_limit"
     },
     {
       "bug": "Per-IP daily cap removed",
@@ -146,6 +146,90 @@
       "file": "src/radar/web.py",
       "caught": true,
       "caught_by": "tests/test_web_mcp_evals.py::test_pages_render_and_carry_security_headers"
+    },
+    {
+      "bug": "CSRF check skipped when deciding a Recupero finding",
+      "file": "src/radar/web.py",
+      "caught": true,
+      "caught_by": "tests/test_product.py::test_sign_in_review_and_audit"
+    },
+    {
+      "bug": "CSRF check skipped when resolving a difference",
+      "file": "src/radar/web.py",
+      "caught": true,
+      "caught_by": "tests/test_product.py::test_resolving_a_difference_applies_the_choice_and_logs_it"
+    },
+    {
+      "bug": "Any password accepted",
+      "file": "src/radar/appstate.py",
+      "caught": true,
+      "caught_by": "tests/test_product.py::test_wrong_password_and_login_rate_limit"
+    },
+    {
+      "bug": "Expired sessions still valid",
+      "file": "src/radar/appstate.py",
+      "caught": true,
+      "caught_by": "tests/test_product.py::test_app_state_passwords_sessions_reviews"
+    },
+    {
+      "bug": "Recupero proposes incentives whose hiring window is unknown",
+      "file": "src/radar/recupero.py",
+      "caught": true,
+      "caught_by": "tests/test_recupero.py::test_incentive_without_a_stated_hiring_window_is_never_proposed"
+    },
+    {
+      "bug": "Saving not capped at the monthly limit",
+      "file": "src/radar/recupero.py",
+      "caught": true,
+      "caught_by": "tests/test_recupero.py::test_scan_prices_with_cap_and_flags_proposal"
+    },
+    {
+      "bug": "Executives pass the non-executive condition",
+      "file": "src/radar/eligibility.py",
+      "caught": true,
+      "caught_by": "tests/test_eligibility.py::test_worker_conditions_settled_from_profile[Personale"
+    },
+    {
+      "bug": "Later acts' conditions dropped instead of united",
+      "file": "src/radar/consolidate.py",
+      "caught": true,
+      "caught_by": "tests/test_consolidate.py::test_conditions_from_every_act_are_united_not_compared"
+    },
+    {
+      "bug": "Conservative resolver: mixed-topic sentence settled anyway",
+      "file": "src/radar/eligibility.py",
+      "caught": true,
+      "caught_by": "tests/test_eligibility.py::test_ambiguous_conditions_stay_with_the_consultant[Lavoratore"
+    },
+    {
+      "bug": "Required criterion missing from the acts counts as passed",
+      "file": "src/radar/eligibility.py",
+      "caught": true,
+      "caught_by": "tests/test_eligibility.py::test_required_criterion_missing_from_the_acts_is_unknown"
+    },
+    {
+      "bug": "Rejected proposals still counted in the totals",
+      "file": "src/radar/recupero.py",
+      "caught": true,
+      "caught_by": "tests/test_recupero.py::test_scan_prices_with_cap_and_flags_proposal"
+    },
+    {
+      "bug": "Public demo: one visitor's decisions visible to all",
+      "file": "src/radar/web.py",
+      "caught": true,
+      "caught_by": "tests/test_product.py::test_public_demo_mode_keeps_visitors_apart"
+    },
+    {
+      "bug": "Spreadsheet formula injection in the CSV export",
+      "file": "src/radar/web.py",
+      "caught": true,
+      "caught_by": "tests/test_product.py::test_csv_is_spreadsheet_safe_and_italian"
+    },
+    {
+      "bug": "A decision resolves a newer difference on the same field",
+      "file": "src/radar/store.py",
+      "caught": true,
+      "caught_by": "tests/test_product.py::test_resolving_a_difference_applies_the_choice_and_logs_it"
     }
   ]
 }

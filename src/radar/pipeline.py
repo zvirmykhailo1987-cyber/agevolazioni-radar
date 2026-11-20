@@ -13,8 +13,9 @@ from typing import Any
 import dlt
 
 from radar.inps_source import InpsClient, inps_source
+from radar.paths import HOME
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = HOME
 DB_PATH = Path(os.environ.get("RADAR_DB", ROOT / "data" / "radar.duckdb"))
 
 

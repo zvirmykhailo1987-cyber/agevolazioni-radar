@@ -156,6 +156,90 @@ MUTATIONS = [
         'resp.headers["Content-Security-Policy"] = (',
         'resp.headers["X-Unused"] = (',
     ),
+    (
+        "CSRF check skipped when deciding a Recupero finding",
+        "src/radar/web.py",
+        'if not hmac.compare_digest(csrf, user["csrf"]):\n            raise HTTPException(403, "Token CSRF non valido")\n        _, rep',
+        'if False:\n            raise HTTPException(403, "Token CSRF non valido")\n        _, rep',
+    ),
+    (
+        "CSRF check skipped when resolving a difference",
+        "src/radar/web.py",
+        'if not hmac.compare_digest(csrf, user["csrf"]):\n            raise HTTPException(403, "Token CSRF non valido")\n        if demo_mode:',
+        'if False:\n            raise HTTPException(403, "Token CSRF non valido")\n        if demo_mode:',
+    ),
+    (
+        "Any password accepted",
+        "src/radar/appstate.py",
+        "return hmac.compare_digest(candidate, digest_hex)",
+        "return True",
+    ),
+    (
+        "Expired sessions still valid",
+        "src/radar/appstate.py",
+        'if row is None or row["expires_at"] < _now().isoformat():',
+        "if row is None:",
+    ),
+    (
+        "Recupero proposes incentives whose hiring window is unknown",
+        "src/radar/recupero.py",
+        'if a.verdict == "not_eligible" or window != "pass":',
+        'if a.verdict == "not_eligible":',
+    ),
+    (
+        "Saving not capped at the monthly limit",
+        "src/radar/recupero.py",
+        "min(gross * rate * exemption_pct / 100.0, a.monthly_cap)",
+        "gross * rate * exemption_pct / 100.0",
+    ),
+    (
+        "Executives pass the non-executive condition",
+        "src/radar/eligibility.py",
+        'return ("pass" if hire.job_level != "dirigente" else "fail"',
+        'return ("pass"',
+    ),
+    (
+        "Later acts' conditions dropped instead of united",
+        "src/radar/consolidate.py",
+        'if f in UNION and old.status == "verified":',
+        "if f in UNION and False:",
+    ),
+    (
+        "Conservative resolver: mixed-topic sentence settled anyway",
+        "src/radar/eligibility.py",
+        'if sum(topics.values()) != 1 or topics["deroga"]:',
+        "if False:",
+    ),
+    (
+        "Required criterion missing from the acts counts as passed",
+        "src/radar/eligibility.py",
+        'add(f"manca:{name}", "unknown",',
+        'add(f"manca:{name}", "pass",',
+    ),
+    (
+        "Rejected proposals still counted in the totals",
+        "src/radar/recupero.py",
+        "kept = [f for f in self.proposed if f.finding_id not in rejected]",
+        "kept = list(self.proposed)",
+    ),
+    (
+        "Public demo: one visitor's decisions visible to all",
+        "src/radar/web.py",
+        'return hashlib.sha256(token.encode()).hexdigest()[:16] if demo_mode and token else ""',
+        'return ""',
+    ),
+    (
+        "Spreadsheet formula injection in the CSV export",
+        "src/radar/web.py",
+        'return "\'" + text if text[:1] in',
+        "return text if text[:1] in",
+    ),
+    (
+        "A decision resolves a newer difference on the same field",
+        "src/radar/store.py",
+        'r = res.get(d.get("key", ""))',
+        "r = next(iter(res.values()), None)",
+    ),
 ]
 
 

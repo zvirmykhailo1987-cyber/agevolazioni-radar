@@ -1,0 +1,20 @@
+{
+  "note": "Consultant decisions on differences between acts used for the 'after review' agent score. Each entry: the circular that introduced the incentive admits somministrazione; the later operating message lists only tempo indeterminato without excluding somministrazione, so the circular's value is kept (a later act that is silent has not repealed it).",
+  "resolutions": [
+    {
+      "incentive_id": "bonus-giovani-2026",
+      "field": "contract_types",
+      "choice": "kept"
+    },
+    {
+      "incentive_id": "bonus-donne-2026",
+      "field": "contract_types",
+      "choice": "kept"
+    },
+    {
+      "incentive_id": "bonus-zes-2026",
+      "field": "contract_types",
+      "choice": "kept"
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Stato · Agevolazioni Radar{% endblock %}
+{% block content %}
+<h1>Stato del sistema</h1>
+<section class="grid3" aria-label="Freschezza">
+  <div class="stat"><span class="k">Ultimo atto INPS letto</span><span class="v small-v">{{ fresh.latest_act_published_on | fmt if fresh.latest_act_published_on else 'n/d' }}</span></div>
+  <div class="stat"><span class="k">Atti scansionati / in base</span><span class="v">{{ fresh.acts_scanned }} / {{ fresh.documents_in_kb }}</span></div>
+  <div class="stat"><span class="k">Incentivi non nel registro</span><span class="v">{{ unmapped|length }}</span></div>
+</section>
+
+<section class="card"><h2>Valutazioni</h2>
+  {% set pts = history | selectattr('holdout', 'ne', none) | list %}
+  {% if pts %}
+  {% set n = pts|length %}{% set step = 300 / ([n - 1, 1] | max) %}
+  <svg class="chart" viewBox="0 0 360 180" role="img" aria-labelledby="ev-t">
+    <title id="ev-t">Fatti corretti (tutte le domande) e holdout per ogni valutazione</title>
+    {% for t in [0, 50, 100] %}<line class="grid" x1="40" x2="340" y1="{{ 150 - t * 1.3 }}" y2="{{ 150 - t * 1.3 }}"/><text class="tick" x="34" y="{{ 154 - t * 1.3 }}" text-anchor="end">{{ t }}%</text>{% endfor %}
+    <polyline class="line-a" points="{% for h in pts %}{{ 40 + loop.index0 * step }},{{ 150 - h.fact_recall * 130 }} {% endfor %}"/>
+    <polyline class="line-b" points="{% for h in pts %}{{ 40 + loop.index0 * step }},{{ 150 - h.holdout * 130 }} {% endfor %}"/>
+    {% for h in pts %}<circle class="dot-a" cx="{{ 40 + loop.index0 * step }}" cy="{{ 150 - h.fact_recall * 130 }}" r="3"/><circle class="dot-b" cx="{{ 40 + loop.index0 * step }}" cy="{{ 150 - h.holdout * 130 }}" r="3"/>{% endfor %}
+    {% set last = pts[-1] %}
+    <text class="val" x="{{ 40 + (n - 1) * step }}" y="{{ 142 - last.fact_recall * 130 }}" text-anchor="end">{{ '%.0f' % (last.fact_recall * 100) }}%</text>
+    <text class="val" x="{{ 40 + (n - 1) * step }}" y="{{ 166 - last.holdout * 130 }}" text-anchor="end">{{ '%.0f' % (last.holdout * 100) }}%</text>
+    <text class="tick" x="40" y="176">prima valutazione</text><text class="tick" x="340" y="176" text-anchor="end">ultima</text>
+  </svg>
+  <p class="legend"><span class="key a"></span> tutte le domande <span class="key b"></span> holdout (mai usate per la messa a punto)</p>
+  {% endif %}
+  <div class="tablewrap" data-state="{{ 'complete' if history else 'empty' }}"><table class="rule">
+    <thead><tr><th scope="col">Data</th><th scope="col">Ripetizioni</th><th scope="col">Fatti corretti</th><th scope="col">Holdout</th><th scope="col">Rifiuti corretti</th><th scope="col">Campi estratti</th><th scope="col">Recupero (recall)</th></tr></thead>
+    <tbody>{% for h in history|reverse %}<tr><td>{{ h.at }}</td><td>{{ h.repeats }}</td>
+      <td>{{ '%.0f%%' % (h.fact_recall*100) if h.fact_recall is not none else '—' }}</td>
+      <td>{{ '%.0f%%' % (h.holdout*100) if h.holdout is not none else '—' }}</td>
+      <td>{{ '%.0f%%' % (h.refusal*100) if h.refusal is not none else '—' }}</td>
+      <td>{{ '%.0f%%' % (h.extraction*100) }}</td>
+      <td>{{ '%.0f%%' % (h.recupero*100) if h.recupero is not none else '—' }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  <p class="muted small">Le prime righe usavano un punteggio per sottostringhe e solo le domande di sviluppo: non sono confrontabili con le successive.</p>
+</section>
+
+<section class="card"><h2>Caricamenti della pipeline</h2>
+  <div class="tablewrap" data-state="{{ 'complete' if loads else 'empty' }}"><table class="rule">
+    <thead><tr><th scope="col">Pacchetto dlt</th><th scope="col">Esito</th><th scope="col">Quando (UTC)</th></tr></thead>
+    <tbody>{% for l in loads %}<tr><td class="anchor">{{ l.load_id }}</td><td>{{ 'ok' if l.status == 0 else l.status }}</td><td>{{ l.inserted_at }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+
+<section class="card"><h2>Chiamate al modello (30 giorni)</h2>
+  {% if llm.by_purpose %}<div class="tablewrap" data-state="complete"><table class="rule">
+    <thead><tr><th scope="col">Uso</th><th scope="col">Chiamate</th><th scope="col">Token in</th><th scope="col">Token out</th><th scope="col">Latenza media</th><th scope="col">Errori</th></tr></thead>
+    <tbody>{% for r in llm.by_purpose %}<tr><td>{{ r.purpose }}</td><td>{{ r.n }}</td><td>{{ r.i | fmt }}</td><td>{{ r.o | fmt }}</td><td>{{ '%.1f s' % (r.ms / 1000) }}</td><td>{{ r.errors }}</td></tr>{% endfor %}</tbody>
+  </table></div>{% else %}<p class="empty" data-state="empty">Nessuna chiamata registrata da questa istanza. Fai una domanda in <a href="/chiedi">Chiedi</a>: qui compariranno token, latenza ed errori.</p>{% endif %}
+</section>
+
+<section class="card"><h2>Registro delle decisioni</h2>
+  {% if audit %}<div class="tablewrap" data-state="complete"><table class="rule">
+    <thead><tr><th scope="col">Quando</th><th scope="col">Chi</th><th scope="col">Azienda / dipendente</th><th scope="col">Incentivo</th><th scope="col">Decisione</th><th scope="col">Nota</th></tr></thead>
+    <tbody>{% for a in audit %}<tr><td>{{ a.reviewed_at[:16].replace('T',' ') }}</td><td>{{ a.reviewer }}</td><td>{{ a.company_id }} / {{ a.hire_id }}</td><td>{{ a.incentive_id }}</td><td>{{ a.decision }}</td><td>{{ a.note }}</td></tr>{% endfor %}</tbody>
+  </table></div>{% else %}<p class="empty" data-state="empty">Nessuna decisione registrata. Apri <a href="/recupero">Recupero</a> e approva o respingi una proposta.</p>{% endif %}
+</section>
+{% endblock %}

@@ -102,3 +102,38 @@ def test_numbers_written_as_words_or_named_in_titles_are_supported():
     )
     assert unsupported_numbers("Bonus Giovani 2026: sotto i 35 anni, per 24 mesi", "Quanto dura?", [p]) == []
     assert unsupported_numbers("per 36 mesi", "Quanto dura?", [p]) == ["36"]
+
+
+class FakeEmbedder:
+    """Tiny bag-of-words embedder: enough to prove the fusion and the cache."""
+
+    name = "fake"
+    VOCAB = ["donne", "dipendenti", "portale", "importo", "massimo", "domanda"]
+
+    def __init__(self):
+        self.calls = 0
+
+    def embed(self, texts):
+        import numpy as np
+
+        self.calls += 1
+        rows = [[float(w in t.lower()) for w in self.VOCAB] + [0.01] for t in texts]
+        v = np.array(rows, dtype=np.float32)
+        return v / np.linalg.norm(v, axis=1, keepdims=True)
+
+
+def test_hybrid_retrieval_fuses_dense_hits_and_caches_vectors(tmp_path):
+    emb = FakeEmbedder()
+    r = build_retriever(PS, k=2, embedder=emb, cache_dir=tmp_path)
+    # "domanda" only matches the third passage densely; BM25 sees nothing for this query
+    assert r.invoke("domanda")[0].metadata["i"] == 2
+    build_retriever(PS, k=2, embedder=emb, cache_dir=tmp_path)
+    assert emb.calls == 2, "corpus embedded once (+1 query), the second build reads the cache"
+    assert len(list(tmp_path.glob("emb-*.npy"))) == 1
+
+
+def test_try_embedder_can_be_switched_off(monkeypatch):
+    from radar.rag import try_embedder
+
+    monkeypatch.setenv("RADAR_EMBEDDINGS", "off")
+    assert try_embedder() is None

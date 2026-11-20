@@ -1,0 +1,72 @@
+{
+  "company": {
+    "id": "trattoria-puglia",
+    "name": "Trattoria del Porto Srl (dati di esempio)",
+    "ccnl": "Pubblici esercizi, ristorazione collettiva e commerciale e turismo",
+    "employees": 8,
+    "has_durc": true,
+    "applies_ccnl": true
+  },
+  "hires": [
+    {
+      "id": "T01",
+      "full_name": "Luca Bianchi",
+      "role": "Cuoco",
+      "birth_date": "1998-03-12",
+      "gender": "M",
+      "hire_date": "2026-06-01",
+      "contract_type": "tempo_indeterminato",
+      "workplace_region": "Puglia",
+      "months_without_regular_job": 30,
+      "gross_monthly_eur": 2000,
+      "net_job_increase": true,
+      "job_level": "operaio",
+      "disadvantage": "molto_svantaggiato"
+    },
+    {
+      "id": "T02",
+      "full_name": "Maria Russo",
+      "role": "Responsabile di sala",
+      "birth_date": "1984-09-02",
+      "gender": "F",
+      "hire_date": "2026-07-01",
+      "contract_type": "tempo_indeterminato",
+      "workplace_region": "Puglia",
+      "months_without_regular_job": 26,
+      "gross_monthly_eur": 1800,
+      "net_job_increase": true,
+      "job_level": "impiegato",
+      "disadvantage": "molto_svantaggiato"
+    },
+    {
+      "id": "T03",
+      "full_name": "Giulia Esposito",
+      "role": "Cameriera",
+      "birth_date": "2003-01-20",
+      "gender": "F",
+      "hire_date": "2026-03-01",
+      "contract_type": "tempo_indeterminato",
+      "workplace_region": "Puglia",
+      "months_without_regular_job": 4,
+      "gross_monthly_eur": 1500,
+      "net_job_increase": true,
+      "job_level": "operaio",
+      "disadvantage": "nessuno"
+    },
+    {
+      "id": "T04",
+      "full_name": "Paolo Greco",
+      "role": "Aiuto cuoco",
+      "birth_date": "1995-05-30",
+      "gender": "M",
+      "hire_date": "2026-04-15",
+      "contract_type": "apprendistato",
+      "workplace_region": "Puglia",
+      "months_without_regular_job": 12,
+      "gross_monthly_eur": 1400,
+      "net_job_increase": true,
+      "job_level": "operaio",
+      "disadvantage": "svantaggiato"
+    }
+  ]
+}

@@ -12,6 +12,7 @@ output is a pre-screening for a consulente del lavoro, never a decision
 
 from __future__ import annotations
 
+import re
 from dataclasses import asdict, dataclass, field
 from datetime import date
 from typing import Literal
@@ -37,6 +38,53 @@ class HireProfile(BaseModel):
     employer_has_durc: bool | None = None
     employer_applies_ccnl: bool | None = None
     net_job_increase: bool | None = None
+    job_level: Literal["operaio", "impiegato", "quadro", "dirigente"] | None = None
+    disadvantage: Literal["nessuno", "svantaggiato", "molto_svantaggiato"] | None = None  # DM 17 ottobre 2017
+
+
+EXCLUDED_CONTRACT_WORDS = ("apprendist", "domestic", "intermittent")
+
+
+def resolve_condition(text: str, hire: HireProfile) -> tuple[Outcome, str] | None:
+    """Settle a worker condition from profile data when its meaning is unambiguous.
+
+    Returns (outcome, which profile field decided) or None when code cannot judge the
+    text; the condition then stays "unknown" for the consultant. Deliberately small:
+    each rule is a phrase INPS uses verbatim in many circulars.
+    """
+    t = " ".join(text.lower().split())
+    topics = {
+        "dirigente": "dirigen" in t,
+        "svantaggio": "svantaggiat" in t,
+        "contratto": any(w in t for w in EXCLUDED_CONTRACT_WORDS),
+        "trasformazione": "trasformazion" in t,
+        "deroga": "deroga" in t or "richiest" in t or "salvo" in t or "tranne" in t,
+    }
+    # Conservative by design: a sentence that mixes topics, or carries an exception, stays with
+    # the consultant. A wrong "pass" is the worst error this system can make.
+    if sum(topics.values()) != 1 or topics["deroga"]:
+        return None
+    if topics["dirigente"]:
+        if not re.fullmatch(r"(personale )?non dirigenziale\.?", t) or hire.job_level is None:
+            return None
+        return ("pass" if hire.job_level != "dirigente" else "fail", f"qualifica: {hire.job_level}")
+    if topics["svantaggio"]:
+        if hire.disadvantage is None or "non " in t:
+            return None
+        either = re.search(r"svantaggiat[aeio] o molto svantaggiat", t) is not None
+        need = ("svantaggiato", "molto_svantaggiato") if either or "molto" not in t else ("molto_svantaggiato",)
+        return ("pass" if hire.disadvantage in need else "fail", f"condizione: {hire.disadvantage.replace('_', ' ')}")
+    if topics["contratto"]:
+        if not t.startswith("esclus") or hire.contract_type is None:
+            return None
+        bad = any(w in hire.contract_type for w in EXCLUDED_CONTRACT_WORDS)
+        return ("fail" if bad else "pass", f"contratto: {hire.contract_type.replace('_', ' ')}")
+    if topics["trasformazione"]:
+        if not t.startswith("non spetta per la trasformazione") or hire.contract_type is None:
+            return None
+        conv = "trasformazione" in hire.contract_type
+        return ("fail" if conv else "pass", f"contratto: {hire.contract_type.replace('_', ' ')}")
+    return None
 
 
 @dataclass
@@ -53,6 +101,9 @@ class Assessment:
     verdict: Verdict
     checks: list[Check] = field(default_factory=list)
     max_benefit_eur: float | None = None
+    monthly_cap: float | None = None
+    months: int | None = None
+    attestations: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, object]:
         d = asdict(self)
@@ -74,7 +125,9 @@ def _norm_region(s: str) -> str:
     return s.strip().lower().replace("’", "'")
 
 
-def assess(rule: IncentiveRule, hire: HireProfile, pending_differences: int = 0) -> Assessment:
+def assess(
+    rule: IncentiveRule, hire: HireProfile, pending_differences: int = 0, required: tuple[str, ...] = ()
+) -> Assessment:
     checks: list[Check] = []
 
     def add(criterion: str, outcome: Outcome, detail: str, cit: Citation | None = None) -> None:
@@ -82,11 +135,19 @@ def assess(rule: IncentiveRule, hire: HireProfile, pending_differences: int = 0)
 
     # Hiring window
     lo, hi = rule.hire_from, rule.hire_to
-    if lo.value and hi.value:
-        ok = date.fromisoformat(lo.value) <= hire.hire_date <= date.fromisoformat(hi.value)
-        add("hire_window", "pass" if ok else "fail", f"dal {_it(lo.value)} al {_it(hi.value)}", lo.citation)
+    if (lo.value and hire.hire_date < date.fromisoformat(lo.value)) or (
+        hi.value and hire.hire_date > date.fromisoformat(hi.value)
+    ):
+        window = f"dal {_it(lo.value) if lo.value else '…'} al {_it(hi.value) if hi.value else '…'}"
+        add("hire_window", "fail", window, (lo if lo.value else hi).citation)
+    elif lo.value and hi.value:
+        add("hire_window", "pass", f"dal {_it(lo.value)} al {_it(hi.value)}", lo.citation)
+    elif lo.value:
+        # open-ended ("a decorrere dal ..."): the hire is in range, but the end date is a consultant check
+        add("hire_window", "pass", f"dal {_it(lo.value)}", lo.citation)
+        add("hire_window_end", "unknown", "data finale non indicata negli atti letti")
     else:
-        add("hire_window", "unknown", "periodo non indicato")
+        add("hire_window", "unknown", "periodo non indicato per intero")
 
     # Age
     max_age = rule.worker_max_age_exclusive
@@ -187,6 +248,25 @@ def assess(rule: IncentiveRule, hire: HireProfile, pending_differences: int = 0)
             else:
                 add(crit, "pass" if have else "fail", "richiesto", need.citation)
 
+    # Conditions the schema cannot express are never assumed to hold.
+    # Conditions about the hired person that the schema cannot hold: never assumed to hold.
+    # Conditions about the employer (no dismissals, de minimis, ...): a checklist the employer attests;
+    # they do not lower the verdict, but they are always shown.
+    attest: list[str] = []
+    for cond in rule.other_conditions.value or []:
+        settled = resolve_condition(cond.text, hire)
+        if settled is not None:  # whoever the model said it is about, data decides it
+            add("condizione_lavoratore", settled[0], f"{cond.text} ({settled[1]})")
+        elif cond.applies_to == "lavoratore":
+            add("condizione_lavoratore", "unknown", cond.text)
+        else:
+            attest.append(cond.text)
+
+    # A criterion the law requires for this incentive but the acts' extraction left empty is not "passed".
+    for name in required:
+        if getattr(rule, name).value is None:
+            add(f"manca:{name}", "unknown", "requisito previsto, non letto dagli atti: verificare nel testo")
+
     # Fail closed: a condition the model stated but the gate could not ground is not "passed".
     for name in CITED_FIELDS:
         if name not in FREE_TEXT_FIELDS and getattr(rule, name).status == "unverified":
@@ -203,4 +283,4 @@ def assess(rule: IncentiveRule, hire: HireProfile, pending_differences: int = 0)
     cap = rule.monthly_cap_eur_zes.value if in_zes and rule.monthly_cap_eur_zes.value else rule.monthly_cap_eur.value
     months = rule.max_duration_months.value
     benefit = float(cap * months) if cap is not None and months is not None and verdict != "not_eligible" else None
-    return Assessment(rule.incentive_id, verdict, checks, benefit)
+    return Assessment(rule.incentive_id, verdict, checks, benefit, cap, months, attest)

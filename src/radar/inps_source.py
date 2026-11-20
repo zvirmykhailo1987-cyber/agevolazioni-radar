@@ -66,8 +66,20 @@ def page_url(selectors: str) -> str:
     return f"{BASE}/it/it/inps-comunica/atti/circolari-messaggi-e-normativa/dettaglio.{selectors}.html"
 
 
+# Scope: contribution measures a private employer applies through payroll. Benefits paid to
+# families or to self-employed contributors are out of scope even when called "bonus".
+OUT_OF_SCOPE = re.compile(
+    r"asili? nido|psicoterap|bonus psicologo|nuovi nati|una tantum di 1\.000|"
+    r"artigiani|esercenti attivit|coltivatori diretti|gestioni? special|iscritti per la prima volta|"
+    r"INPS Mobile|esodo|autoimprenditorial|attivit\w* imprenditorial|Poli ultraregionali|"
+    r"sentenz|Regolamento \(UE\) 2022/2472",
+    re.IGNORECASE,
+)
+
+
 def is_relevant(subject: str) -> bool:
-    return bool(RELEVANT.search(normalize_space(unquote(subject or ""))))
+    text = normalize_space(unquote(subject or ""))
+    return bool(RELEVANT.search(text)) and not OUT_OF_SCOPE.search(text)
 
 
 def parse_listing_item(item: dict[str, Any]) -> dict[str, Any]:

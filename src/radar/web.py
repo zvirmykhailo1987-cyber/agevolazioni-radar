@@ -4,6 +4,10 @@
 
 from __future__ import annotations
 
+import csv
+import hashlib
+import hmac
+import io
 import json
 import os
 import threading
@@ -12,19 +16,24 @@ from collections import Counter, OrderedDict, deque
 from datetime import date
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from radar import llm as llm_module
+from radar.appstate import AppState
 from radar.eligibility import HireProfile
+from radar.paths import HOME
 from radar.rag import Answerer, answer, anthropic_llm
+from radar.recupero import DEFAULT_EMPLOYER_RATE, example_companies, load_workforce, scan
 from radar.rules import CITED_FIELDS
 from radar.store import Store
 
 HERE = Path(__file__).resolve().parent
-ROOT = HERE.parents[1]
+ROOT = HOME
 templates = Jinja2Templates(directory=str(HERE / "templates"))
 
 
@@ -40,12 +49,23 @@ def fmt_value(v: Any) -> str:
         return f"{v:,}".replace(",", ".")
     if isinstance(v, list):
         return ", ".join(fmt_value(x) for x in v)
+    if isinstance(v, date):
+        return v.strftime("%d/%m/%Y")
     if isinstance(v, str) and len(v) == 10 and v[4] == "-" and v[7] == "-":
         return f"{v[8:]}/{v[5:7]}/{v[:4]}"
     return str(v).replace("_", " ")
 
 
 templates.env.filters["fmt"] = fmt_value
+
+
+def fmt_eur(v: Any) -> str:
+    if v is None:
+        return "—"
+    return f"{float(v):,.0f} €".replace(",", ".")
+
+
+templates.env.filters["eur"] = fmt_eur
 
 CRITERIA = {
     "hire_window": "Periodo di assunzione",
@@ -60,8 +80,32 @@ CRITERIA = {
     "ccnl_compliance": "Rispetto del CCNL",
     "net_job_increase": "Incremento occupazionale netto",
     "differenze_tra_atti": "Differenze tra atti",
+    "condizione_lavoratore": "Condizione sul lavoratore",
 }
 YES_NO = {"si": True, "no": False}
+SESSION_COOKIE = "radar_session"
+DEMO_PASSWORD = "consulente-demo-2026"  # noqa: S105  # nosec B105 - public demo account, shown on sign-in
+DEMO_PASSWORD_HINT = "consulente / consulente-demo-2026"  # noqa: S105  # nosec B105
+
+
+def csv_cell(value: Any) -> str:
+    """Spreadsheet-safe cell: text that starts like a formula is prefixed with an apostrophe."""
+    text = "" if value is None else str(value)
+    return "'" + text if text[:1] in ("=", "+", "-", "@", "\t", "\r") else text
+
+
+def it_number(value: float | None) -> str:
+    """Decimal comma, as Italian Excel expects with a ';' separator."""
+    return "" if value is None else f"{value:.2f}".replace(".", ",")
+
+
+def safe_next(target: str) -> str:
+    """Only same-site paths: '/x' yes; '//evil', 'https://evil', backslashes and control characters no."""
+    if not target.startswith("/") or any(ord(c) < 32 or c in "\\" for c in target):
+        return "/"
+    parts = urlsplit(target)
+    return target if not parts.scheme and not parts.netloc and not target.startswith("//") else "/"
+
 
 LABELS = {
     "legal_basis": "Base normativa",
@@ -82,6 +126,7 @@ LABELS = {
     "requires_net_job_increase": "Incremento occupazionale netto",
     "requires_durc": "DURC",
     "requires_ccnl_compliance": "Rispetto CCNL",
+    "other_conditions": "Altre condizioni",
     "application_procedure": "Procedura",
 }
 
@@ -130,10 +175,17 @@ class RateLimiter:
             return None
 
 
-def create_app(store: Store | None = None, llm: Answerer | None = None) -> FastAPI:
+def create_app(store: Store | None = None, llm: Answerer | None = None, state: AppState | None = None) -> FastAPI:
     app = FastAPI(title="Agevolazioni Radar", docs_url=None, redoc_url=None, openapi_url=None)
     app.mount("/static", StaticFiles(directory=str(HERE / "static")), name="static")
     st = store or Store()
+    app_state = state or AppState()
+    app_state.ensure_user("consulente", os.environ.get("RADAR_DEMO_PASSWORD", DEMO_PASSWORD))
+    llm_module.RECORDER = app_state.log_llm
+    login_limiter = RateLimiter(per_ip=10, window_s=900, daily=1_000_000, per_ip_daily=50)  # per-IP only
+    secure_cookie = os.environ.get("RADAR_COOKIE_SECURE", "1") == "1"
+    # Public demo: everyone shares one sign-in, so nothing a visitor does may change what others see.
+    demo_mode = os.environ.get("RADAR_DEMO_MODE", "0") == "1"
     limiter = RateLimiter(
         int(os.environ.get("RADAR_QA_PER_IP", "8")), 3600, int(os.environ.get("RADAR_QA_DAILY", "150"))
     )
@@ -146,7 +198,9 @@ def create_app(store: Store | None = None, llm: Answerer | None = None) -> FastA
 
     @app.middleware("http")
     async def headers(request: Request, call_next: Any) -> Any:
-        st.refresh()
+        if not request.url.path.startswith(("/static", "/health")):
+            st.refresh()
+            st.apply_resolutions(*app_state.resolutions())
         resp = await call_next(request)
         resp.headers["X-Content-Type-Options"] = "nosniff"
         resp.headers["Referrer-Policy"] = "same-origin"
@@ -157,12 +211,47 @@ def create_app(store: Store | None = None, llm: Answerer | None = None) -> FastA
         )
         return resp
 
+    def user_of(request: Request) -> dict[str, Any] | None:
+        return app_state.session(request.cookies.get(SESSION_COOKIE))
+
+    def scope_of(request: Request) -> str:
+        """In the public demo each visitor's decisions are private to their own session."""
+        token = request.cookies.get(SESSION_COOKIE) or ""
+        return hashlib.sha256(token.encode()).hexdigest()[:16] if demo_mode and token else ""
+
     def page(request: Request, name: str, **ctx: Any) -> HTMLResponse:
-        return templates.TemplateResponse(request, name, {"fresh": st.freshness, "qa_enabled": qa_enabled, **ctx})
+        return templates.TemplateResponse(
+            request,
+            name,
+            {"fresh": st.freshness, "qa_enabled": qa_enabled, "user": user_of(request), "demo_mode": demo_mode, **ctx},
+        )
+
+    def eval_history() -> list[dict[str, Any]]:
+        out = []
+        for f in sorted((ROOT / "evals" / "results").glob("eval-*.json")):
+            d = json.loads(f.read_text(encoding="utf-8"))
+            qa = d["qa"]["summary"]
+            hold = d["qa"].get("by_split", {}).get("holdout", {})
+            out.append(
+                {
+                    "at": d["at"][:16].replace("T", " "),
+                    "fact_recall": qa.get("fact_recall"),
+                    "holdout": hold.get("fact_recall"),
+                    "refusal": qa.get("refused_when_unanswerable"),
+                    "extraction": d["extraction"]["field_accuracy"],
+                    "recupero": d.get("recupero", {}).get("recall"),
+                    "repeats": d["qa"].get("repeats", 1),
+                }
+            )
+        return out
 
     @app.get("/health")
     def health() -> dict[str, Any]:
-        return {"ok": True, "documents": st.freshness.get("documents_in_kb", 0)}
+        return {
+            "ok": True,
+            "documents": st.freshness.get("documents_in_kb", 0),
+            "retrieval": "hybrid" if st.embedder is not None else "bm25",
+        }
 
     @app.get("/", response_class=HTMLResponse)
     def home(request: Request) -> HTMLResponse:
@@ -176,7 +265,39 @@ def create_app(store: Store | None = None, llm: Answerer | None = None) -> FastA
             raise HTTPException(404, "Incentivo non trovato")
         rule, meta = found
         rows = [{"field": f, "label": LABELS.get(f, f), **getattr(rule, f).model_dump()} for f in CITED_FIELDS]
-        return page(request, "incentive.html", rule=rule, meta=meta, rows=rows, labels=LABELS)
+        diffs = st.diffs([s["doc_id"] for s in meta["sources"] if s.get("doc_id") is not None])
+        entry = st.registry.entries.get(incentive_id)
+        return page(request, "incentive.html", rule=rule, meta=meta, rows=rows, labels=LABELS, diffs=diffs, entry=entry)
+
+    @app.post("/incentivo/{incentive_id}/differenza")
+    def resolve_difference(
+        request: Request,
+        incentive_id: str,
+        diff_key: str = Form(..., max_length=32),
+        choice: str = Form(...),
+        note: str = Form("", max_length=500),
+        csrf: str = Form(...),
+    ) -> Response:
+        user = user_of(request)
+        if user is None:
+            return RedirectResponse(f"/accesso?next=/incentivo/{incentive_id}", status_code=303)
+        if not hmac.compare_digest(csrf, user["csrf"]):
+            raise HTTPException(403, "Token CSRF non valido")
+        if demo_mode:
+            raise HTTPException(403, "Nella demo pubblica le differenze tra atti sono di sola lettura.")
+        m = st.merged.get(incentive_id)
+        diff = next((d for d in (m.differences if m else []) if d.get("key") == diff_key), None)
+        if diff is None or choice not in ("kept", "other"):
+            raise HTTPException(400, "Richiesta non valida")
+        app_state.record_resolution(
+            diff_key=diff_key,
+            incentive_id=incentive_id,
+            field=diff["field"],
+            choice=choice,
+            note=note,
+            reviewer=user["username"],
+        )
+        return RedirectResponse(f"/incentivo/{incentive_id}#differenze", status_code=303)
 
     @app.get("/verifica", response_class=HTMLResponse)
     def check_form(request: Request) -> HTMLResponse:
@@ -244,6 +365,199 @@ def create_app(store: Store | None = None, llm: Answerer | None = None) -> FastA
         ask_llm = ask_llm or anthropic_llm()
         res = answer(q, st.passages, st.retriever, ask_llm)
         return page(request, "ask.html", result=res, examples=[], q=q, error=None)
+
+    @app.get("/catalogo", response_class=HTMLResponse)
+    def catalog(request: Request, q: str = "", group: str = "", status: str = "", side: str = "") -> HTMLResponse:
+        items = st.incentives()
+        needle = q.strip().lower()[:80]
+        shown = [
+            i
+            for i in items
+            if (not group or i["group"] == group)
+            and (not status or i["status"] == status)
+            and (not side or i["side"] == side)
+            and (not needle or needle in i["name"].lower())
+        ]
+        return page(
+            request,
+            "catalog.html",
+            items=shown,
+            total=len(items),
+            q=q[:80],
+            group=group,
+            status=status,
+            side=side,
+            groups=sorted({i["group"] for i in items}),
+            state="ready" if shown else "empty",
+        )
+
+    @app.get("/recupero", response_class=HTMLResponse)
+    def recupero_list(request: Request) -> HTMLResponse:
+        companies = [{"id": cid, "wf": load_workforce(p)} for cid, p in example_companies().items()]
+        return page(request, "recupero_list.html", companies=companies)
+
+    def report_for(cid: str, rate: float) -> tuple[Any, Any]:
+        files = example_companies()
+        if cid not in files:
+            raise HTTPException(404, "Azienda non trovata")
+        wf = load_workforce(files[cid])
+        return wf, scan(st, wf, employer_rate=rate)
+
+    def rate_of(raw: str | None) -> float:
+        try:
+            val = float(raw or DEFAULT_EMPLOYER_RATE)
+        except ValueError:
+            return DEFAULT_EMPLOYER_RATE
+        return min(max(val, 0.05), 0.6)
+
+    @app.get("/recupero/{cid}.csv")
+    def recupero_csv(cid: str, rate: str | None = None) -> Response:
+        _, rep = report_for(cid, rate_of(rate))
+        buf = io.StringIO()
+        w = csv.writer(buf, delimiter=";")
+        w.writerow(
+            [
+                "dipendente",
+                "incentivo",
+                "esito",
+                "proposta",
+                "risparmio_mensile_eur",
+                "mesi",
+                "risparmio_totale_eur",
+                "dati_da_verificare",
+                "fonte",
+            ]
+        )
+        for f in rep.findings:
+            w.writerow(
+                [
+                    csv_cell(x)
+                    for x in (
+                        f.hire_name,
+                        f.incentive_name,
+                        f.verdict,
+                        "si" if f.proposed else "alternativa",
+                        it_number(f.monthly_saving_eur),
+                        f.months or "",
+                        it_number(f.total_saving_eur),
+                        ", ".join(f.missing),
+                        f.source["label"],
+                    )
+                ]
+            )
+        return Response(
+            buf.getvalue(),
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="recupero-{cid}.csv"'},
+        )
+
+    @app.get("/recupero/{cid}", response_class=HTMLResponse)
+    def recupero_page(request: Request, cid: str, rate: str | None = None) -> HTMLResponse:
+        r = rate_of(rate)
+        wf, rep = report_for(cid, r)
+        reviews = app_state.latest_reviews(cid, scope_of(request))
+        rejected = frozenset(k for k, v in reviews.items() if v["decision"] == "respinta")
+        by_hire: dict[str, list[Any]] = {}
+        for f in rep.findings:
+            by_hire.setdefault(f.hire_id, []).append(f)
+        return page(
+            request,
+            "recupero.html",
+            wf=wf,
+            rep=rep,
+            totals=rep.totals(rejected),
+            by_hire=by_hire,
+            rate=r,
+            reviews=reviews,
+            state="ready" if rep.findings else "empty",
+        )
+
+    @app.post("/recupero/{cid}/decisione")
+    def recupero_decision(
+        request: Request,
+        cid: str,
+        finding_id: str = Form(..., max_length=32),
+        decision: str = Form(...),
+        note: str = Form("", max_length=500),
+        csrf: str = Form(...),
+        rate: str | None = Form(None),
+    ) -> Response:
+        user = user_of(request)
+        if user is None:
+            return RedirectResponse(f"/accesso?next=/recupero/{cid}", status_code=303)
+        if not hmac.compare_digest(csrf, user["csrf"]):
+            raise HTTPException(403, "Token CSRF non valido")
+        _, rep = report_for(cid, rate_of(rate))
+        f = next((x for x in rep.findings if x.finding_id == finding_id), None)
+        if f is None or decision not in ("approvata", "respinta"):
+            raise HTTPException(400, "Decisione non valida")
+        app_state.record_review(
+            finding_id=f.finding_id,
+            company_id=cid,
+            hire_id=f.hire_id,
+            incentive_id=f.incentive_id,
+            decision=decision,
+            note=note,
+            reviewer=user["username"],
+            evidence={
+                "verdict": f.verdict,
+                "source": f.source,
+                "total_saving_eur": f.total_saving_eur,
+                "missing": f.missing,
+                "rule_fingerprint": f.rule_fingerprint,
+            },
+            scope=scope_of(request),
+        )
+        return RedirectResponse(f"/recupero/{cid}?rate={rate_of(rate)}#{f.hire_id}", status_code=303)
+
+    @app.get("/accesso", response_class=HTMLResponse)
+    def login_form(request: Request, next: str = "/recupero") -> HTMLResponse:
+        return page(request, "login.html", next=safe_next(next), error=None, demo_password=DEMO_PASSWORD_HINT)
+
+    @app.post("/accesso", response_class=HTMLResponse)
+    def login_post(
+        request: Request,
+        username: str = Form(..., max_length=40),
+        password: str = Form(..., max_length=200),
+        next: str = Form("/recupero"),
+    ) -> Response:
+        ip = request.client.host if request.client else "?"
+        if (msg := login_limiter.allow(ip)) is not None:
+            return page(request, "login.html", next=safe_next(next), error=msg, demo_password=DEMO_PASSWORD_HINT)
+        got = app_state.login(username.strip(), password)
+        if got is None:
+            return page(
+                request,
+                "login.html",
+                next=safe_next(next),
+                error="Credenziali non valide.",
+                demo_password=DEMO_PASSWORD_HINT,
+            )
+        resp = RedirectResponse(safe_next(next), status_code=303)
+        resp.set_cookie(SESSION_COOKIE, got[0], httponly=True, secure=secure_cookie, samesite="lax", max_age=8 * 3600)
+        return resp
+
+    @app.post("/esci")
+    def logout(request: Request, csrf: str = Form("")) -> Response:
+        user = user_of(request)
+        if user is not None and not hmac.compare_digest(csrf, user["csrf"]):
+            raise HTTPException(403, "Token CSRF non valido")
+        app_state.logout(request.cookies.get(SESSION_COOKIE))
+        resp = RedirectResponse("/", status_code=303)
+        resp.delete_cookie(SESSION_COOKIE)
+        return resp
+
+    @app.get("/stato", response_class=HTMLResponse)
+    def status_page(request: Request) -> HTMLResponse:
+        return page(
+            request,
+            "status.html",
+            loads=st.loads(),
+            history=eval_history(),
+            llm=app_state.llm_stats(),
+            audit=app_state.audit(20, scope_of(request)),
+            unmapped=st.unmapped,
+        )
 
     @app.get("/api/incentivi")
     def api_list() -> list[dict[str, Any]]:

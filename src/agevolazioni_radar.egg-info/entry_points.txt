@@ -1,6 +1,0 @@
-[console_scripts]
-radar-evals = radar.evals:main
-radar-kb = radar.kb:main
-radar-load = radar.pipeline:main
-radar-mcp = radar.mcp_server:main
-radar-web = radar.web:main

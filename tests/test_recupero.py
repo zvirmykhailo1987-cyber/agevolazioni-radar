@@ -116,3 +116,16 @@ def test_open_ended_window_is_proposed_with_the_end_date_to_check(store):
     m.rule = m.rule.model_copy(update={"hire_to": m.rule.hire_to.model_copy(update={"value": None})})
     a = next(f for f in scan(store, Workforce.model_validate(WF)).findings if f.hire_id == "A")
     assert a.verdict == "needs_review" and "hire_window_end" in a.missing
+
+
+def test_rejecting_the_proposal_promotes_the_next_alternative():
+    from radar.recupero import Finding, Report
+
+    def f(fid, hire, total, proposed):
+        return Finding(fid, hire, hire, fid, fid, "needs_review", total / 24, 24, total, proposed, [], {}, {})
+
+    rep = Report(company={}, employer_rate=0.3, findings=[f("a1", "A", 12000, True), f("a2", "A", 9000, False)])
+    assert rep.totals()["to_check_eur"] == 12000
+    after = rep.totals(frozenset({"a1"}))
+    assert after["to_check_eur"] == 9000 and after["rejected"] == 1 and after["hires_with_proposal"] == 1
+    assert rep.totals(frozenset({"a1", "a2"}))["to_check_eur"] == 0

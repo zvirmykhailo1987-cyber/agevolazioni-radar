@@ -137,6 +137,7 @@ class InpsClient:
         self.delay_s = delay_s
         self.sleep = sleep
         self.requests = 0
+        self.skipped: list[str] = []  # malformed listing rows, kept for the run log
 
     def get_json(self, url: str) -> dict[str, Any]:
         if self.requests:
@@ -168,7 +169,12 @@ class InpsClient:
             if not results:
                 return
             for raw in results:
-                item = parse_listing_item(raw)
+                try:
+                    item = parse_listing_item(raw)
+                except (KeyError, ValueError, IndexError, TypeError):
+                    # a half-filled row (no date, no id) must not abort the day's load: skip it, say so
+                    self.skipped.append(str(raw)[:200])
+                    continue
                 if item["published_on"] < since.isoformat():
                     return
                 yield item

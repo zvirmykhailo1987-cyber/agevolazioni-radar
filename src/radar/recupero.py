@@ -100,9 +100,21 @@ class Report:
     def proposed(self) -> list[Finding]:
         return [f for f in self.findings if f.proposed]
 
+    def effective(self, rejected: frozenset[str] = frozenset()) -> list[Finding]:
+        """Per hire, the best finding the consultant has not rejected."""
+        best: dict[str, Finding] = {}
+        for f in self.findings:  # best first within each hire
+            if f.finding_id not in rejected and f.hire_id not in best:
+                best[f.hire_id] = f
+        return list(best.values())
+
     def totals(self, rejected: frozenset[str] = frozenset()) -> dict[str, Any]:
-        """Sums over proposals; findings a consultant rejected are left out."""
-        kept = [f for f in self.proposed if f.finding_id not in rejected]
+        """Sums over proposals; findings a consultant rejected are left out.
+
+        When the proposal for a hire is rejected, the next alternative for that hire (findings are
+        stored best first) takes its place: rejecting one incentive does not mean the hire is worth 0.
+        """
+        kept = self.effective(rejected)
         sure = [f for f in kept if f.verdict == "likely_eligible" and f.total_saving_eur]
         review = [f for f in kept if f.verdict == "needs_review" and f.total_saving_eur]
         by_inc: dict[str, float] = {}
@@ -113,7 +125,7 @@ class Report:
             "likely_eur": round(sum(f.total_saving_eur or 0 for f in sure), 2),
             "to_check_eur": round(sum(f.total_saving_eur or 0 for f in review), 2),
             "hires_with_proposal": len({f.hire_id for f in kept}),
-            "rejected": len(rejected & {f.finding_id for f in self.proposed}),
+            "rejected": len(rejected & {f.finding_id for f in self.findings}),
             "by_incentive": dict(sorted(by_inc.items(), key=lambda kv: -kv[1])),
         }
 
@@ -188,7 +200,14 @@ def scan(
         candidates: list[Finding] = []
         for iid in ids:
             m = store.merged[iid]
-            a = assess(m.rule, profile, pending_differences=len(pending(m)), required=store.required(iid))
+            open_diffs = pending(m)
+            a = assess(
+                m.rule,
+                profile,
+                pending_differences=len(open_diffs),
+                required=store.required(iid),
+                contested=frozenset(d["field"] for d in open_diffs),
+            )
             window = next((c.outcome for c in a.checks if c.criterion == "hire_window"), "unknown")
             if a.verdict == "not_eligible" or window != "pass":
                 continue

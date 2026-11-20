@@ -96,10 +96,15 @@ class AppState:
                 con.close()
 
     # --- users and sessions -------------------------------------------------
-    def ensure_user(self, username: str, password: str, role: str = "consulente") -> None:
+    def ensure_user(self, username: str, password: str, role: str = "consulente", reset: bool = False) -> None:
+        """Create the user; with ``reset`` also replace an existing password (and end its sessions)."""
         with self.db() as con:
-            if con.execute("select 1 from users where username=?", [username]).fetchone() is None:
+            row = con.execute("select pw_hash from users where username=?", [username]).fetchone()
+            if row is None:
                 con.execute("insert into users values (?,?,?)", [username, hash_password(password), role])
+            elif reset and not check_password(password, row["pw_hash"]):
+                con.execute("update users set pw_hash=? where username=?", [hash_password(password), username])
+                con.execute("delete from sessions where username=?", [username])
 
     def login(self, username: str, password: str) -> tuple[str, str] | None:
         """Return (session token, csrf token) or None. Only the token's hash is stored."""

@@ -159,13 +159,13 @@ MUTATIONS = [
     (
         "CSRF check skipped when deciding a Recupero finding",
         "src/radar/web.py",
-        'if not hmac.compare_digest(csrf, user["csrf"]):\n            raise HTTPException(403, "Token CSRF non valido")\n        _, rep',
+        'if not hmac.compare_digest(csrf.encode(), user["csrf"].encode()):\n            raise HTTPException(403, "Token CSRF non valido")\n        _, rep',
         'if False:\n            raise HTTPException(403, "Token CSRF non valido")\n        _, rep',
     ),
     (
         "CSRF check skipped when resolving a difference",
         "src/radar/web.py",
-        'if not hmac.compare_digest(csrf, user["csrf"]):\n            raise HTTPException(403, "Token CSRF non valido")\n        if demo_mode:',
+        'if not hmac.compare_digest(csrf.encode(), user["csrf"].encode()):\n            raise HTTPException(403, "Token CSRF non valido")\n        if demo_mode:',
         'if False:\n            raise HTTPException(403, "Token CSRF non valido")\n        if demo_mode:',
     ),
     (
@@ -205,10 +205,58 @@ MUTATIONS = [
         "if f in UNION and False:",
     ),
     (
-        "Conservative resolver: mixed-topic sentence settled anyway",
+        "Disadvantage resolver accepts extra clauses (age, region, programme)",
         "src/radar/eligibility.py",
-        'if sum(topics.values()) != 1 or topics["deroga"]:',
+        "if m := _SVANTAGGIO.fullmatch(t):",
+        "if m := _SVANTAGGIO.match(t):",
+    ),
+    (
+        "Contract exclusions read from a fixed word list instead of the text",
+        "src/radar/eligibility.py",
+        "        bad = hire.contract_type in excluded",
+        '        bad = hire.contract_type in {"apprendistato", "lavoro_domestico", "lavoro_intermittente"}',
+    ),
+    (
+        "Conditions dropped by the citation gate are ignored",
+        "src/radar/eligibility.py",
+        'descriptive = name in FREE_TEXT_FIELDS and name != "other_conditions"',
+        "descriptive = name in FREE_TEXT_FIELDS",
+    ),
+    (
+        "A contested field still gives a hard no",
+        "src/radar/eligibility.py",
+        'if outcome == "fail" and contested & set(CRITERION_FIELDS.get(criterion, ())):',
         "if False:",
+    ),
+    (
+        "Daily extraction cap counts cached acts (new acts never extracted)",
+        "src/radar/kb.py",
+        'if limit is not None and stats["extracted"] + stats["failed"] >= limit:',
+        'if limit is not None and stats["extracted"] + stats["failed"] + stats["cached"] >= limit:',
+    ),
+    (
+        "One failed model call aborts the whole refresh",
+        "src/radar/kb.py",
+        "        except Exception as exc:  # network, rate limit, malformed output: retry tomorrow, keep going",
+        "        except ZeroDivisionError as exc:",
+    ),
+    (
+        "One malformed INPS listing row aborts the load",
+        "src/radar/inps_source.py",
+        "except (KeyError, ValueError, IndexError, TypeError):",
+        "except ZeroDivisionError:",
+    ),
+    (
+        "Operator password ignored once the demo user exists",
+        "src/radar/appstate.py",
+        'elif reset and not check_password(password, row["pw_hash"]):',
+        "elif False:",
+    ),
+    (
+        "Successful sign-ins use up the login limit",
+        "src/radar/web.py",
+        "if (msg := login_limiter.blocked(ip)) is not None:",
+        "if (msg := login_limiter.allow(ip)) is not None:",
     ),
     (
         "Required criterion missing from the acts counts as passed",
@@ -219,8 +267,8 @@ MUTATIONS = [
     (
         "Rejected proposals still counted in the totals",
         "src/radar/recupero.py",
-        "kept = [f for f in self.proposed if f.finding_id not in rejected]",
-        "kept = list(self.proposed)",
+        "if f.finding_id not in rejected and f.hire_id not in best:",
+        "if f.hire_id not in best:",
     ),
     (
         "Public demo: one visitor's decisions visible to all",

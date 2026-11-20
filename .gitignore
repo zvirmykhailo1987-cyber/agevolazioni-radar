@@ -14,3 +14,4 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 scripts/save-key-from-clipboard.ps1
+.hypothesis/

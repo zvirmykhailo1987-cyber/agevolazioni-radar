@@ -1,6 +1,8 @@
 {% extends "base.html" %}
+{% import "_macros.html" as m %}
 {% block title %}Catalogo · Agevolazioni Radar{% endblock %}
 {% block content %}
+<p class="eyebrow">Base di conoscenza</p>
 <h1>Catalogo degli incentivi</h1>
 <p class="lead">{{ total }} incentivi letti dalle circolari e dai messaggi INPS dal 2025, uniti per incentivo con il registro canonico.</p>
 <form method="get" class="filters" role="search">
@@ -13,17 +15,17 @@
 <div data-state="{{ state }}">
 {% if not items %}<p class="empty">Nessun incentivo corrisponde ai filtri. <a href="/catalogo">Azzera i filtri</a>.</p>{% endif %}
 <ul class="list">
-{% for i in items %}
+{% for i in items | sort(attribute='status') %}
   <li class="row">
     <div>
       <a class="title" href="/incentivo/{{ i.incentive_id }}">{{ i.name }}</a>
       <p class="muted">{{ i.source }}{% if i.sources|length > 1 %} · +{{ i.sources|length - 1 }} {{ 'atto' if i.sources|length == 2 else 'atti' }}{% endif %}{% if i.hire_from or i.hire_to %} · assunzioni {{ i.hire_from | fmt if i.hire_from else '…' }} – {{ i.hire_to | fmt if i.hire_to else '…' }}{% endif %}</p>
     </div>
     <div class="badges">
-      <span class="b {{ {'attiva':'ok','scaduta':'off','futura':'ok','da verificare':'warn'}[i.status] }}">{{ i.status }}</span>
-      <span class="b off">{{ i.group }}</span>
-      {% if i.differences %}<span class="b warn">{{ i.differences }} da verificare</span>{% endif %}
-      <span class="b ok">{{ i.fields.verified }} campi verificati</span>
+      <span class="b {{ {'attiva':'ok','scaduta':'off','futura':'ok','da verificare':'off'}[i.status] }}">{{ 'periodo non indicato' if i.status == 'da verificare' else i.status }}</span>
+      <span class="b ghost">{{ i.group }}</span>
+      {% if i.differences %}<span class="b warn">{{ i.differences }} {{ 'differenza' if i.differences == 1 else 'differenze' }} da decidere</span>{% endif %}
+      <span class="b met">{{ i.fields.verified }} campi verificati</span>
     </div>
   </li>
 {% endfor %}

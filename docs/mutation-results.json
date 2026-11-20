@@ -1,7 +1,7 @@
 {
   "measured": "2026-11-20",
-  "bugs_injected": 38,
-  "caught": 38,
+  "bugs_injected": 46,
+  "caught": 46,
   "results": [
     {
       "bug": "Citation gate accepts a value whose quote is not in the paragraph",
@@ -121,7 +121,7 @@
       "bug": "Extraction cache ignored (pays the API again on every run)",
       "file": "src/radar/kb.py",
       "caught": true,
-      "caught_by": "tests/test_kb_store.py::test_extraction_is_cached_by_hash_prompt_and_model"
+      "caught_by": "tests/test_crash.py::test_daily_cap_spends_on_the_newest_acts_and_skips_cached_ones"
     },
     {
       "bug": "Same-day message outranks the circular that introduced the incentive",
@@ -133,7 +133,7 @@
       "bug": "Per-IP limit on paid questions removed",
       "file": "src/radar/web.py",
       "caught": true,
-      "caught_by": "tests/test_product.py::test_wrong_password_and_login_rate_limit"
+      "caught_by": "tests/test_web_mcp_evals.py::test_rate_limiter_per_ip_and_daily"
     },
     {
       "bug": "Per-IP daily cap removed",
@@ -181,7 +181,7 @@
       "bug": "Saving not capped at the monthly limit",
       "file": "src/radar/recupero.py",
       "caught": true,
-      "caught_by": "tests/test_recupero.py::test_scan_prices_with_cap_and_flags_proposal"
+      "caught_by": "tests/test_properties.py::test_monthly_estimate_never_exceeds_the_cap_and_grows_with_salary"
     },
     {
       "bug": "Executives pass the non-executive condition",
@@ -196,10 +196,58 @@
       "caught_by": "tests/test_consolidate.py::test_conditions_from_every_act_are_united_not_compared"
     },
     {
-      "bug": "Conservative resolver: mixed-topic sentence settled anyway",
+      "bug": "Disadvantage resolver accepts extra clauses (age, region, programme)",
       "file": "src/radar/eligibility.py",
       "caught": true,
       "caught_by": "tests/test_eligibility.py::test_ambiguous_conditions_stay_with_the_consultant[Lavoratore"
+    },
+    {
+      "bug": "Contract exclusions read from a fixed word list instead of the text",
+      "file": "src/radar/eligibility.py",
+      "caught": true,
+      "caught_by": "tests/test_eligibility.py::test_contract_exclusions_use_the_words_in_the_text[Esclusi"
+    },
+    {
+      "bug": "Conditions dropped by the citation gate are ignored",
+      "file": "src/radar/eligibility.py",
+      "caught": true,
+      "caught_by": "tests/test_eligibility.py::test_conditions_dropped_by_the_gate_are_not_silently_passed"
+    },
+    {
+      "bug": "A contested field still gives a hard no",
+      "file": "src/radar/eligibility.py",
+      "caught": true,
+      "caught_by": "tests/test_eligibility.py::test_a_contested_field_cannot_exclude_the_hire"
+    },
+    {
+      "bug": "Daily extraction cap counts cached acts (new acts never extracted)",
+      "file": "src/radar/kb.py",
+      "caught": true,
+      "caught_by": "tests/test_crash.py::test_daily_cap_spends_on_the_newest_acts_and_skips_cached_ones"
+    },
+    {
+      "bug": "One failed model call aborts the whole refresh",
+      "file": "src/radar/kb.py",
+      "caught": true,
+      "caught_by": "tests/test_crash.py::test_one_failed_model_call_does_not_stop_the_refresh_and_is_retried"
+    },
+    {
+      "bug": "One malformed INPS listing row aborts the load",
+      "file": "src/radar/inps_source.py",
+      "caught": true,
+      "caught_by": "tests/test_crash.py::test_listing_with_junk_rows_loads_the_good_ones"
+    },
+    {
+      "bug": "Operator password ignored once the demo user exists",
+      "file": "src/radar/appstate.py",
+      "caught": true,
+      "caught_by": "tests/test_product.py::test_operator_password_replaces_the_demo_one_and_hint_is_demo_only"
+    },
+    {
+      "bug": "Successful sign-ins use up the login limit",
+      "file": "src/radar/web.py",
+      "caught": true,
+      "caught_by": "tests/test_product.py::test_wrong_password_and_login_rate_limit"
     },
     {
       "bug": "Required criterion missing from the acts counts as passed",

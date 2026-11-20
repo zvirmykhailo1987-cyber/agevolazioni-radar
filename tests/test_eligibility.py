@@ -246,3 +246,92 @@ def test_employer_tagged_condition_is_still_checked_against_data():
         rule().model_copy(update={"other_conditions": cond}), HireProfile(**{**BASE, "contract_type": "apprendistato"})
     )
     assert a.verdict == "not_eligible" and a.attestations == []
+
+
+# --- independent review, round 3: each case was a wrong verdict on real text -----------------
+@pytest.mark.parametrize(
+    "text,value,expected",
+    [
+        (
+            "Lavoratore molto svantaggiato o svantaggiato secondo le categorie del regolamento (UE) 651/2014",
+            "svantaggiato",
+            "pass",
+        ),
+        ("giovane svantaggiato o molto svantaggiato ai sensi del regolamento (UE) 651/2014", "svantaggiato", "pass"),
+        (
+            "assunzione di donne svantaggiate o molto svantaggiate secondo i criteri del regolamento (UE) 651/2014",
+            "molto_svantaggiato",
+            "pass",
+        ),
+        ("Lavoratrice svantaggiata", "nessuno", "fail"),
+    ],
+)
+def test_real_disadvantage_phrasings(text, value, expected):
+    from radar.eligibility import resolve_condition
+
+    assert resolve_condition(text, HireProfile(hire_date=date(2026, 6, 1), disadvantage=value))[0] == expected
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Lavoratori svantaggiati di età superiore a 50 anni",
+        "Lavoratori svantaggiati residenti in aree ZES",
+        "Lavoratori svantaggiati iscritti al programma GOL",
+        "Esclusi settore agricolo, lavoro domestico e apprendistato",
+        "Esclusi i lavoratori con rapporto di lavoro intermittente, anche a tempo indeterminato",
+    ],
+)
+def test_extra_clauses_stay_with_the_consultant(text):
+    from radar.eligibility import resolve_condition
+
+    hire = HireProfile(hire_date=date(2026, 6, 1), disadvantage="svantaggiato", contract_type="tempo_indeterminato")
+    assert resolve_condition(text, hire) is None
+
+
+@pytest.mark.parametrize(
+    "text,contract,expected",
+    [
+        ("Esclusi i rapporti di lavoro domestico", "apprendistato", "pass"),
+        (
+            "Esclusi i contratti di apprendistato, di lavoro domestico e a tempo determinato",
+            "tempo_determinato",
+            "fail",
+        ),
+        (
+            "Esclusi i rapporti di lavoro domestico e di apprendistato e il lavoro intermittente",
+            "apprendistato",
+            "fail",
+        ),
+        ("Esclusi personale dirigente, lavoro domestico, apprendistato e lavoro intermittente", "apprendistato", None),
+        ("Qualifica di operaio, impiegato o quadro; escluso il personale dirigenziale", "x", None),
+    ],
+)
+def test_contract_exclusions_use_the_words_in_the_text(text, contract, expected):
+    from radar.eligibility import resolve_condition
+
+    out = resolve_condition(text, HireProfile(hire_date=date(2026, 6, 1), contract_type=contract))
+    assert (out[0] if out else None) == expected
+
+
+def test_executive_phrase_from_the_2024_acts():
+    from radar.eligibility import resolve_condition
+
+    t = "Qualifica di operaio, impiegato o quadro; escluso il personale dirigenziale"
+    assert resolve_condition(t, HireProfile(hire_date=date(2026, 6, 1), job_level="quadro"))[0] == "pass"
+    assert resolve_condition(t, HireProfile(hire_date=date(2026, 6, 1), job_level="dirigente"))[0] == "fail"
+
+
+def test_conditions_dropped_by_the_gate_are_not_silently_passed():
+    from radar.rules import Cited, Condition
+
+    dropped = Cited[list[Condition]](value=None, status="unverified")
+    a = assess(rule().model_copy(update={"other_conditions": dropped}), HireProfile(**BASE))
+    assert a.verdict == "needs_review" and outcomes(a)["other_conditions"] == "unknown"
+
+
+def test_a_contested_field_cannot_exclude_the_hire():
+    late = HireProfile(**{**BASE, "hire_date": date(2027, 2, 1)})
+    assert assess(rule(), late).verdict == "not_eligible"
+    a = assess(rule(), late, pending_differences=1, contested=frozenset({"hire_to"}))
+    assert a.verdict == "needs_review" and outcomes(a)["hire_window"] == "unknown"

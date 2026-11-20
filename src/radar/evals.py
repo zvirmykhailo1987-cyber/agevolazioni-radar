@@ -283,7 +283,10 @@ def score_recupero_both(store: Store, resolutions: Path = EVALS / "resolutions.j
         if (iid, d["field"]) in wanted
     }
     store.apply_resolutions(decisions, version="eval")
-    after = score_recupero(store)
+    try:
+        after = score_recupero(store)
+    finally:  # leave the store as it ships: later scores must not see the diagnostic decisions
+        store.apply_resolutions({}, version="eval-restored")
     return {
         **before,
         "after_review": {k: v for k, v in after.items() if k != "issues"},

@@ -1,6 +1,8 @@
 {% extends "base.html" %}
+{% import "_macros.html" as m %}
 {% block title %}Stato · Agevolazioni Radar{% endblock %}
 {% block content %}
+<p class="eyebrow">Operazioni e qualità</p>
 <h1>Stato del sistema</h1>
 <section class="grid3" aria-label="Freschezza">
   <div class="stat"><span class="k">Ultimo atto INPS letto</span><span class="v small-v">{{ fresh.latest_act_published_on | fmt if fresh.latest_act_published_on else 'n/d' }}</span></div>
@@ -11,19 +13,20 @@
 <section class="card"><h2>Valutazioni</h2>
   {% set pts = history | selectattr('holdout', 'ne', none) | list %}
   {% if pts %}
-  {% set n = pts|length %}{% set step = 300 / ([n - 1, 1] | max) %}
-  <svg class="chart" viewBox="0 0 360 180" role="img" aria-labelledby="ev-t">
+  {% set n = pts|length %}
+  {% set x0, x1, y0, h = 44, 600, 170, 140 %}{% set step = (x1 - x0) / ([n - 1, 1] | max) %}
+  <svg class="chart" viewBox="0 0 620 200" role="img" aria-labelledby="ev-t">
     <title id="ev-t">Fatti corretti (tutte le domande) e holdout per ogni valutazione</title>
-    {% for t in [0, 50, 100] %}<line class="grid" x1="40" x2="340" y1="{{ 150 - t * 1.3 }}" y2="{{ 150 - t * 1.3 }}"/><text class="tick" x="34" y="{{ 154 - t * 1.3 }}" text-anchor="end">{{ t }}%</text>{% endfor %}
-    <polyline class="line-a" points="{% for h in pts %}{{ 40 + loop.index0 * step }},{{ 150 - h.fact_recall * 130 }} {% endfor %}"/>
-    <polyline class="line-b" points="{% for h in pts %}{{ 40 + loop.index0 * step }},{{ 150 - h.holdout * 130 }} {% endfor %}"/>
-    {% for h in pts %}<circle class="dot-a" cx="{{ 40 + loop.index0 * step }}" cy="{{ 150 - h.fact_recall * 130 }}" r="3"/><circle class="dot-b" cx="{{ 40 + loop.index0 * step }}" cy="{{ 150 - h.holdout * 130 }}" r="3"/>{% endfor %}
+    {% for t in [0, 50, 100] %}<line class="grid" x1="{{ x0 }}" x2="{{ x1 }}" y1="{{ y0 - t * h / 100 }}" y2="{{ y0 - t * h / 100 }}"/><text class="tick" x="{{ x0 - 8 }}" y="{{ y0 - t * h / 100 + 3 }}" text-anchor="end">{{ t }}%</text>{% endfor %}
+    <polyline class="line-a" points="{% for p in pts %}{{ x0 + loop.index0 * step }},{{ y0 - p.fact_recall * h }} {% endfor %}"/>
+    <polyline class="line-b" points="{% for p in pts %}{{ x0 + loop.index0 * step }},{{ y0 - p.holdout * h }} {% endfor %}"/>
+    {% for p in pts %}<circle class="dot-a" cx="{{ x0 + loop.index0 * step }}" cy="{{ y0 - p.fact_recall * h }}" r="3.5"/><circle class="dot-b" cx="{{ x0 + loop.index0 * step }}" cy="{{ y0 - p.holdout * h }}" r="3.5"/>{% endfor %}
     {% set last = pts[-1] %}
-    <text class="val" x="{{ 40 + (n - 1) * step }}" y="{{ 142 - last.fact_recall * 130 }}" text-anchor="end">{{ '%.0f' % (last.fact_recall * 100) }}%</text>
-    <text class="val" x="{{ 40 + (n - 1) * step }}" y="{{ 166 - last.holdout * 130 }}" text-anchor="end">{{ '%.0f' % (last.holdout * 100) }}%</text>
-    <text class="tick" x="40" y="176">prima valutazione</text><text class="tick" x="340" y="176" text-anchor="end">ultima</text>
+    <text class="val" x="{{ x1 }}" y="{{ y0 - last.fact_recall * h - 10 }}" text-anchor="end">{{ '%.0f' % (last.fact_recall * 100) }}%</text>
+    <text class="val" x="{{ x1 }}" y="{{ y0 - last.holdout * h + 20 }}" text-anchor="end">{{ '%.0f' % (last.holdout * 100) }}%</text>
+    <text class="tick" x="{{ x0 }}" y="194">prima valutazione</text><text class="tick" x="{{ x1 }}" y="194" text-anchor="end">ultima</text>
   </svg>
-  <p class="legend"><span class="key a"></span> tutte le domande <span class="key b"></span> holdout (mai usate per la messa a punto)</p>
+  <p class="legend"><span><span class="key a"></span> tutte le domande</span> <span><span class="key b"></span> holdout, mai usate per la messa a punto</span></p>
   {% endif %}
   <div class="tablewrap" data-state="{{ 'complete' if history else 'empty' }}"><table class="rule">
     <thead><tr><th scope="col">Data</th><th scope="col">Ripetizioni</th><th scope="col">Fatti corretti</th><th scope="col">Holdout</th><th scope="col">Rifiuti corretti</th><th scope="col">Campi estratti</th><th scope="col">Recupero (recall)</th></tr></thead>

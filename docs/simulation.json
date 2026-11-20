@@ -1,0 +1,38 @@
+{
+  "measured": "2026-11-20",
+  "seed": 7,
+  "hires": 2000,
+  "incentives_checked": 17,
+  "scan_seconds": 1.84,
+  "hires_per_second": 1085.2,
+  "findings": 1423,
+  "hires_with_proposal": 815,
+  "proposals_by_verdict": {
+    "needs_review": 815
+  },
+  "top_reasons_to_check": {
+    "condizione_lavoratore": 1925,
+    "differenze_tra_atti": 314,
+    "hire_window_end": 252,
+    "monthly_cap_eur": 252,
+    "exemption_percent": 194,
+    "contract_type": 164
+  },
+  "totals_eur": {
+    "likely_eur": 0,
+    "to_check_eur": 4585953.12
+  },
+  "invariant_violations": [],
+  "invariant_violations_count": 0,
+  "web": {
+    "concurrent_clients": 16,
+    "requests": 400,
+    "status_codes": {
+      "200": 400
+    },
+    "p50_ms": 55.0,
+    "p95_ms": 529.8,
+    "throughput_rps": 107.4,
+    "note": "in-process ASGI client on a laptop; measures the app, not the network"
+  }
+}

@@ -1,6 +1,8 @@
 {% extends "base.html" %}
+{% import "_macros.html" as m %}
 {% block title %}Accedi · Agevolazioni Radar{% endblock %}
 {% block content %}
+<p class="eyebrow">Area consulente</p>
 <h1>Accesso consulente</h1>
 <p class="lead">Serve solo per approvare o respingere le proposte di Recupero: ogni decisione resta nel registro con nome e ora.</p>
 {% if error %}<p class="notice" role="alert">{{ error }}</p>{% endif %}
@@ -10,5 +12,5 @@
   <label>Password <input type="password" name="password" autocomplete="current-password" required maxlength="200"></label>
   <button type="submit">Accedi</button>
 </form>
-<p class="muted small">Demo pubblica: {{ demo_password }}</p>
+{% if demo_password %}<p class="muted small">Demo pubblica: {{ demo_password }}</p>{% endif %}
 {% endblock %}

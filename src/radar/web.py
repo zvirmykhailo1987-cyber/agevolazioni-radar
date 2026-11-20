@@ -9,6 +9,7 @@ import hashlib
 import hmac
 import io
 import json
+import math
 import os
 import threading
 import time
@@ -22,6 +23,7 @@ from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from pydantic import ValidationError
 
 from radar import llm as llm_module
 from radar.appstate import AppState
@@ -131,7 +133,87 @@ LABELS = {
 }
 
 
-templates.env.filters["criterion"] = lambda c: CRITERIA.get(c) or LABELS.get(c, c)
+CRITERIA.update(
+    {
+        "hire_window_end": "Data finale delle assunzioni",
+        "other_conditions": "Condizioni aggiuntive",
+    }
+)
+
+
+def criterion_label(c: str) -> str:
+    if c.startswith("manca:"):
+        return f"{LABELS.get(c[6:], c[6:])} (non letto dagli atti)"
+    return CRITERIA.get(c) or LABELS.get(c, c)
+
+
+templates.env.filters["criterion"] = criterion_label
+
+# What the consultant has to do about an open criterion: one queue per kind of work.
+QUEUE_KINDS: list[tuple[str, str, str, frozenset[str]]] = [
+    (
+        "lavoratore",
+        "Da confermare sul lavoratore",
+        "people",
+        frozenset(
+            {"condizione_lavoratore", "worker_age", "worker_min_age", "worker_gender", "months_without_regular_job"}
+        ),
+    ),
+    ("contratto", "Dati del contratto", "doc", frozenset({"contract_type", "zes_region"})),
+    (
+        "datore",
+        "Dati del datore da attestare",
+        "approve",
+        frozenset({"durc", "ccnl_compliance", "net_job_increase", "employer_size"}),
+    ),
+    ("atti", "Differenze tra atti da decidere", "timeline", frozenset({"differenze_tra_atti"})),
+]
+
+
+def work_queue(findings: list[Any]) -> list[dict[str, Any]]:
+    """Group the open criteria of the current proposals by the work they need; the rest is
+    "read in the text" (values the gate dropped, criteria the acts did not yield, open end dates)."""
+    queues: dict[str, dict[str, Any]] = {
+        k: {"key": k, "label": lbl, "icon": icon, "items": []} for k, lbl, icon, _ in QUEUE_KINDS
+    }
+    queues["testo"] = {"key": "testo", "label": "Da leggere nel testo dell'atto", "icon": "book", "items": []}
+    for f in findings:
+        for c in f.assessment["checks"]:
+            if c["outcome"] != "unknown":
+                continue
+            kind = next((k for k, _, _, names in QUEUE_KINDS if c["criterion"] in names), "testo")
+            queues[kind]["items"].append(
+                {
+                    "hire_id": f.hire_id,
+                    "hire": f.hire_name,
+                    "incentive": f.incentive_name,
+                    "incentive_id": f.incentive_id,
+                    "what": criterion_label(c["criterion"]),
+                    "detail": c["detail"],
+                }
+            )
+    for q in queues.values():  # one entry per hire x incentive, its open points listed under it
+        groups: dict[tuple[str, str], dict[str, Any]] = {}
+        for it in q["items"]:
+            g = groups.setdefault(
+                (it["hire_id"], it["incentive_id"]),
+                {k: it[k] for k in ("hire_id", "hire", "incentive", "incentive_id")} | {"points": []},
+            )
+            g["points"].append({"what": it["what"], "detail": it["detail"]})
+        q["count"] = len(q["items"])
+        q["groups"] = list(groups.values())
+    return [q for q in queues.values() if q["items"]]
+
+
+def meter(f: Any) -> dict[str, int]:
+    """Criteria of one finding: decided yes, open, no."""
+    out = {"pass": 0, "unknown": 0, "fail": 0}
+    for c in f.assessment["checks"]:
+        out[c["outcome"]] += 1
+    return out
+
+
+templates.env.filters["meter"] = meter
 
 
 class RateLimiter:
@@ -150,6 +232,15 @@ class RateLimiter:
         self.day_hits: Counter[str] = Counter()
         self.day, self.count = date.today(), 0
         self.lock = threading.Lock()
+
+    def blocked(self, ip: str, now: float | None = None) -> str | None:
+        """Would ``ip`` be refused right now? Records nothing (used to count only failed logins)."""
+        now = time.time() if now is None else now
+        with self.lock:
+            if self.count >= self.daily or self.day_hits[ip] >= self.per_ip_daily:
+                return "Troppi tentativi oggi. Riprova domani."
+            q = [t for t in self.hits.get(ip, ()) if now - t <= self.window_s]
+            return "Troppi tentativi in poco tempo. Riprova tra qualche minuto." if len(q) >= self.per_ip else None
 
     def allow(self, ip: str, now: float | None = None) -> str | None:
         now = time.time() if now is None else now
@@ -180,12 +271,18 @@ def create_app(store: Store | None = None, llm: Answerer | None = None, state: A
     app.mount("/static", StaticFiles(directory=str(HERE / "static")), name="static")
     st = store or Store()
     app_state = state or AppState()
-    app_state.ensure_user("consulente", os.environ.get("RADAR_DEMO_PASSWORD", DEMO_PASSWORD))
+    app_state.ensure_user(
+        "consulente",
+        os.environ.get("RADAR_DEMO_PASSWORD", DEMO_PASSWORD),
+        reset="RADAR_DEMO_PASSWORD" in os.environ,  # a password set by the operator always wins
+    )
     llm_module.RECORDER = app_state.log_llm
     login_limiter = RateLimiter(per_ip=10, window_s=900, daily=1_000_000, per_ip_daily=50)  # per-IP only
     secure_cookie = os.environ.get("RADAR_COOKIE_SECURE", "1") == "1"
     # Public demo: everyone shares one sign-in, so nothing a visitor does may change what others see.
     demo_mode = os.environ.get("RADAR_DEMO_MODE", "0") == "1"
+    # the shared demo password is printed on the sign-in page only when this is the public demo
+    hint = DEMO_PASSWORD_HINT if demo_mode and "RADAR_DEMO_PASSWORD" not in os.environ else None
     limiter = RateLimiter(
         int(os.environ.get("RADAR_QA_PER_IP", "8")), 3600, int(os.environ.get("RADAR_QA_DAILY", "150"))
     )
@@ -256,7 +353,24 @@ def create_app(store: Store | None = None, llm: Answerer | None = None, state: A
     @app.get("/", response_class=HTMLResponse)
     def home(request: Request) -> HTMLResponse:
         items = st.incentives()
-        return page(request, "home.html", incentives=items, ev=latest_eval(), state="ready" if items else "empty")
+        # one real, verified value with its quote: the product's promise shown, not described
+        proof = None
+        for pick in ("bonus-zes-2026", "bonus-giovani-2026", *(i["incentive_id"] for i in items)):
+            found = st.rule(pick)
+            if found and found[0].monthly_cap_eur.status == "verified" and found[0].monthly_cap_eur.citation:
+                rule, meta = found
+                proof = {
+                    "name": rule.name,
+                    "field": LABELS["monthly_cap_eur"],
+                    "value": rule.monthly_cap_eur.value,
+                    "citation": rule.monthly_cap_eur.citation,
+                    "doc": meta["label"],
+                    "id": pick,
+                }
+                break
+        return page(
+            request, "home.html", incentives=items, ev=latest_eval(), proof=proof, state="ready" if items else "empty"
+        )
 
     @app.get("/incentivo/{incentive_id}", response_class=HTMLResponse)
     def incentive(request: Request, incentive_id: str) -> HTMLResponse:
@@ -281,7 +395,7 @@ def create_app(store: Store | None = None, llm: Answerer | None = None, state: A
         user = user_of(request)
         if user is None:
             return RedirectResponse(f"/accesso?next=/incentivo/{incentive_id}", status_code=303)
-        if not hmac.compare_digest(csrf, user["csrf"]):
+        if not hmac.compare_digest(csrf.encode(), user["csrf"].encode()):
             raise HTTPException(403, "Token CSRF non valido")
         if demo_mode:
             raise HTTPException(403, "Nella demo pubblica le differenze tra atti sono di sola lettura.")
@@ -317,19 +431,26 @@ def create_app(store: Store | None = None, llm: Answerer | None = None, state: A
         net_job_increase: str | None = Form(None),
         employer_has_durc: str | None = Form(None),
         employer_applies_ccnl: str | None = Form(None),
+        job_level: str | None = Form(None),
+        disadvantage: str | None = Form(None),
     ) -> HTMLResponse:
-        hire = HireProfile(
-            hire_date=hire_date,
-            worker_birth_date=worker_birth_date,
-            worker_gender=worker_gender or None,  # type: ignore[arg-type]
-            months_without_regular_job=months_without_regular_job,
-            contract_type=contract_type or None,
-            workplace_region=workplace_region or None,
-            employer_employees=employer_employees,
-            net_job_increase=YES_NO.get(net_job_increase or ""),
-            employer_has_durc=YES_NO.get(employer_has_durc or ""),
-            employer_applies_ccnl=YES_NO.get(employer_applies_ccnl or ""),
-        )
+        try:
+            hire = HireProfile(
+                hire_date=hire_date,
+                worker_birth_date=worker_birth_date,
+                worker_gender=worker_gender or None,  # type: ignore[arg-type]
+                months_without_regular_job=months_without_regular_job,
+                contract_type=contract_type or None,
+                workplace_region=workplace_region or None,
+                employer_employees=employer_employees,
+                net_job_increase=YES_NO.get(net_job_increase or ""),
+                employer_has_durc=YES_NO.get(employer_has_durc or ""),
+                employer_applies_ccnl=YES_NO.get(employer_applies_ccnl or ""),
+                job_level=job_level or None,  # type: ignore[arg-type]
+                disadvantage=disadvantage or None,  # type: ignore[arg-type]
+            )
+        except ValidationError as exc:
+            raise HTTPException(422, "Dati della pre-verifica non validi") from exc
         result = st.check(incentive_id, hire)
         if result is None:
             raise HTTPException(404, "Incentivo non trovato")
@@ -408,6 +529,8 @@ def create_app(store: Store | None = None, llm: Answerer | None = None, state: A
             val = float(raw or DEFAULT_EMPLOYER_RATE)
         except ValueError:
             return DEFAULT_EMPLOYER_RATE
+        if not math.isfinite(val):  # 'nan' and 'inf' parse as floats
+            return DEFAULT_EMPLOYER_RATE
         return min(max(val, 0.05), 0.6)
 
     @app.get("/recupero/{cid}.csv")
@@ -460,11 +583,16 @@ def create_app(store: Store | None = None, llm: Answerer | None = None, state: A
         by_hire: dict[str, list[Any]] = {}
         for f in rep.findings:
             by_hire.setdefault(f.hire_id, []).append(f)
+        current = rep.effective(rejected)
+        decided = sum(1 for f in current if f.finding_id in reviews)
         return page(
             request,
             "recupero.html",
             wf=wf,
             rep=rep,
+            queue=work_queue(current),
+            current_ids={f.finding_id for f in current},
+            decided=decided,
             totals=rep.totals(rejected),
             by_hire=by_hire,
             rate=r,
@@ -485,7 +613,7 @@ def create_app(store: Store | None = None, llm: Answerer | None = None, state: A
         user = user_of(request)
         if user is None:
             return RedirectResponse(f"/accesso?next=/recupero/{cid}", status_code=303)
-        if not hmac.compare_digest(csrf, user["csrf"]):
+        if not hmac.compare_digest(csrf.encode(), user["csrf"].encode()):
             raise HTTPException(403, "Token CSRF non valido")
         _, rep = report_for(cid, rate_of(rate))
         f = next((x for x in rep.findings if x.finding_id == finding_id), None)
@@ -512,7 +640,7 @@ def create_app(store: Store | None = None, llm: Answerer | None = None, state: A
 
     @app.get("/accesso", response_class=HTMLResponse)
     def login_form(request: Request, next: str = "/recupero") -> HTMLResponse:
-        return page(request, "login.html", next=safe_next(next), error=None, demo_password=DEMO_PASSWORD_HINT)
+        return page(request, "login.html", next=safe_next(next), error=None, demo_password=hint)
 
     @app.post("/accesso", response_class=HTMLResponse)
     def login_post(
@@ -522,16 +650,18 @@ def create_app(store: Store | None = None, llm: Answerer | None = None, state: A
         next: str = Form("/recupero"),
     ) -> Response:
         ip = request.client.host if request.client else "?"
-        if (msg := login_limiter.allow(ip)) is not None:
-            return page(request, "login.html", next=safe_next(next), error=msg, demo_password=DEMO_PASSWORD_HINT)
+        # only failures count: visitors of the shared demo account behind one address are not locked out
+        if (msg := login_limiter.blocked(ip)) is not None:
+            return page(request, "login.html", next=safe_next(next), error=msg, demo_password=hint)
         got = app_state.login(username.strip(), password)
         if got is None:
+            login_limiter.allow(ip)  # record the failure
             return page(
                 request,
                 "login.html",
                 next=safe_next(next),
                 error="Credenziali non valide.",
-                demo_password=DEMO_PASSWORD_HINT,
+                demo_password=hint,
             )
         resp = RedirectResponse(safe_next(next), status_code=303)
         resp.set_cookie(SESSION_COOKIE, got[0], httponly=True, secure=secure_cookie, samesite="lax", max_age=8 * 3600)
@@ -540,7 +670,7 @@ def create_app(store: Store | None = None, llm: Answerer | None = None, state: A
     @app.post("/esci")
     def logout(request: Request, csrf: str = Form("")) -> Response:
         user = user_of(request)
-        if user is not None and not hmac.compare_digest(csrf, user["csrf"]):
+        if user is not None and not hmac.compare_digest(csrf.encode(), user["csrf"].encode()):
             raise HTTPException(403, "Token CSRF non valido")
         app_state.logout(request.cookies.get(SESSION_COOKIE))
         resp = RedirectResponse("/", status_code=303)

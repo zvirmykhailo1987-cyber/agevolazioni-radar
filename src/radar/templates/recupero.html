@@ -1,82 +1,149 @@
 {% extends "base.html" %}
+{% import "_macros.html" as m %}
 {% block title %}Recupero · {{ wf.company.name }}{% endblock %}
 {% block content %}
-<p class="crumb"><a href="/recupero">Recupero</a> / {{ wf.company.id }}</p>
-<h1>{{ wf.company.name }}</h1>
-<p class="muted">{{ wf.company.ccnl or 'CCNL non indicato' }} · {{ wf.company.employees }} dipendenti · DURC {{ 'sì' if wf.company.has_durc else ('no' if wf.company.has_durc is sameas false else 'n/d') }} · {{ rep.hires_scanned }} assunzioni × {{ rep.incentives_checked }} incentivi controllati</p>
+<p class="crumb"><a href="/recupero">Recupero</a> <span aria-hidden="true">/</span> {{ wf.company.id }}</p>
+<div class="company-head">
+  <div>
+    <h1>{{ wf.company.name }}</h1>
+    <ul class="facts" aria-label="Dati dell'azienda">
+      <li class="b ghost">{{ wf.company.ccnl or 'CCNL non indicato' }}</li>
+      <li class="b ghost">{{ wf.company.employees if wf.company.employees is not none else 'n/d' }} dipendenti</li>
+      <li class="b ghost">DURC {{ 'sì' if wf.company.has_durc else ('no' if wf.company.has_durc is sameas false else 'n/d') }}</li>
+      <li class="b ghost">{{ rep.hires_scanned }} assunzioni × {{ rep.incentives_checked }} incentivi</li>
+    </ul>
+  </div>
+</div>
 
-<section class="grid3" aria-label="Totali">
-  <div class="stat"><span class="k">Stima, requisiti verificati</span><span class="v">{{ totals.likely_eur | eur }}</span></div>
-  <div class="stat"><span class="k">Da verificare dal consulente</span><span class="v">{{ totals.to_check_eur | eur }}</span></div>
-  <div class="stat"><span class="k">Assunzioni con una proposta</span><span class="v">{{ totals.hires_with_proposal }} / {{ rep.hires_scanned }}</span></div>
+{% set potential = totals.likely_eur + totals.to_check_eur %}
+{% set open_items = queue | sum(attribute='items', start=[]) | length %}
+<section class="summary" aria-label="Sintesi">
+  <div class="potential">
+    <div class="k">Risparmio contributivo potenziale (stima)</div>
+    <div class="hero-num">{{ m.money(potential) }}</div>
+    {% set w = 600 %}{% set wl = (w * totals.likely_eur / potential) if potential else 0 %}
+    <div class="stack"><svg viewBox="0 0 {{ w }} 8" preserveAspectRatio="none" role="img" aria-label="{{ totals.likely_eur | eur }} con requisiti verificati, {{ totals.to_check_eur | eur }} da verificare">
+      {% if wl %}<rect class="bar-fg" x="0" y="0" width="{{ '%.1f' % wl }}" height="8"/>{% endif %}
+      {% if potential %}<rect class="bar-warn" x="{{ '%.1f' % wl }}" y="0" width="{{ '%.1f' % (w - wl) }}" height="8"/>{% endif %}
+    </svg></div>
+    <div class="split">
+      <span><span class="key a"></span> requisiti verificati <strong>{{ m.money(totals.likely_eur) }}</strong></span>
+      <span><span class="key b"></span> da verificare <strong>{{ m.money(totals.to_check_eur) }}</strong></span>
+    </div>
+    <div class="review-state">
+      <div><b>{{ totals.hires_with_proposal }}<span class="muted"> / {{ rep.hires_scanned }}</span></b><span>assunzioni con proposta</span></div>
+      <div><b>{{ decided }}<span class="muted"> / {{ current_ids|length }}</span></b><span>proposte decise</span></div>
+      <div><b>{{ open_items }}</b><span>verifiche aperte</span></div>
+    </div>
+  </div>
+
+  <div class="queue" id="coda">
+    <h2>{{ m.icon('tasks', 'sm') }} Cosa resta da verificare <span class="count">{{ open_items }}</span></h2>
+    {% if not queue %}<p class="queue-empty">{{ m.icon('check') }} Nessuna verifica aperta sulle proposte correnti.</p>{% endif %}
+    {% for q in queue %}
+    <details {% if loop.first %}open{% endif %}>
+      <summary>{{ m.icon(q.icon, 'sm') }} {{ q.label }} <span class="n">{{ q.count }}</span>
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></summary>
+      <ul>{% for g in q.groups %}
+        <li><a href="#{{ g.hire_id }}">{{ g.hire }}</a> · {{ g.incentive }}
+          {% if q.key == 'atti' %}<span class="muted"><a href="/incentivo/{{ g.incentive_id }}#differenze">Confronta gli atti e decidi</a></span>
+          {% else %}{% for pt in g.points[:3] %}<span class="muted">{{ pt.detail | replace('_', ' ') | truncate(96) if pt.detail else pt.what }}</span>{% endfor %}
+          {% if g.points|length > 3 %}<span class="muted"><a href="#{{ g.hire_id }}">e altri {{ g.points|length - 3 }} punti</a></span>{% endif %}{% endif %}</li>
+      {% endfor %}</ul>
+    </details>
+    {% endfor %}
+  </div>
 </section>
 
-<form method="get" class="filters">
-  <label>Aliquota contributiva a carico del datore (ipotesi)
-    <input type="number" name="rate" min="0.05" max="0.6" step="0.01" value="{{ '%.2f' % rate }}"></label>
-  <button type="submit">Ricalcola</button>
-  <a class="button secondary" href="/recupero/{{ wf.company.id }}.csv?rate={{ rate }}">Esporta CSV</a>
-</form>
-<p class="muted small">Le somme escludono le proposte respinte{% if totals.rejected %} ({{ totals.rejected }}){% endif %} e restano soggette alle condizioni che il datore deve attestare (es. nessun licenziamento nei sei mesi precedenti, de minimis). Stima: min(retribuzione lorda × aliquota × % di esonero, tetto mensile) × durata massima. L'aliquota reale dipende da settore e qualifica: è un'ipotesi modificabile, non un dato INPS.</p>
+<div class="toolbar">
+  <form method="get" class="filters">
+    <label>Aliquota contributiva del datore (ipotesi)
+      <input type="number" name="rate" min="0.05" max="0.6" step="0.01" value="{{ '%.2f' % rate }}"></label>
+    <button type="submit" class="secondary">{{ m.icon('cycle', 'sm') }} Ricalcola</button>
+  </form>
+  <a class="button secondary" href="/recupero/{{ wf.company.id }}.csv?rate={{ rate }}">{{ m.icon('doc', 'sm') }} Esporta CSV</a>
+</div>
+<p class="assumption">Stima = min(retribuzione lorda × aliquota × % di esonero, tetto mensile) × durata massima. L'aliquota reale dipende da settore e qualifica: è un'ipotesi modificabile, non un dato INPS.
+Le somme escludono le proposte respinte{% if totals.rejected %} ({{ totals.rejected }}){% endif %}: al loro posto conta l'alternativa successiva.</p>
 
 {% if totals.by_incentive %}
 <section class="card">
-  <h2>Risparmio stimato per incentivo</h2>
+  <h2>Per incentivo</h2>
   {% set rows = totals.by_incentive.items() | list %}
   {% set top = rows[0][1] if rows else 1 %}
-  <svg class="chart" viewBox="0 0 360 {{ 30 + rows|length * 46 }}" role="img" aria-labelledby="rt">
-    <title id="rt">Risparmio stimato per incentivo, in euro</title>
-    {% for name, v in rows %}{% set y = 8 + loop.index0 * 46 %}
-    <text class="lbl" x="8" y="{{ y + 12 }}">{{ name[:48] }}</text>
-    <line class="grid" x1="8" x2="8" y1="{{ y + 16 }}" y2="{{ y + 36 }}"/>
-    <rect class="bar-bg" x="8" y="{{ y + 20 }}" width="260" height="12" rx="6"/>
-    <rect class="bar-fg" x="8" y="{{ y + 20 }}" width="{{ '%.1f' % (260 * v / top) }}" height="12" rx="6"/>
-    <text class="val" x="352" y="{{ y + 31 }}" text-anchor="end">{{ v | eur }}</text>
+  <svg class="chart" viewBox="0 0 620 {{ 30 + rows|length * 44 }}" role="img" aria-labelledby="rt">
+    <title id="rt">Risparmio stimato per incentivo, in euro, proposte correnti</title>
+    <line class="grid" x1="0.5" x2="0.5" y1="20" y2="{{ 8 + rows|length * 44 }}"/>
+    <line class="grid" x1="530" x2="530" y1="20" y2="{{ 8 + rows|length * 44 }}"/>
+    <text class="tick" x="0" y="{{ 24 + rows|length * 44 }}">0 €</text>
+    <text class="tick" x="530" y="{{ 24 + rows|length * 44 }}" text-anchor="end">{{ top | eur }}</text>
+    {% for name, v in rows %}{% set y = 4 + loop.index0 * 44 %}
+    <text class="lbl" x="0" y="{{ y + 13 }}">{{ name[:60] }}</text>
+    <rect class="bar-bg" x="0" y="{{ y + 22 }}" width="530" height="10" rx="5"/>
+    <rect class="bar-fg" x="0" y="{{ y + 22 }}" width="{{ '%.1f' % (530 * v / top) }}" height="10" rx="5"/>
+    <text class="val" x="620" y="{{ y + 32 }}" text-anchor="end">{{ v | eur }}</text>
     {% endfor %}
   </svg>
 </section>
 {% endif %}
 
+<h2>Assunzioni</h2>
 <div data-state="{{ state }}">
 {% for h in wf.hires %}
   {% set fs = by_hire.get(h.id, []) %}
   <section class="card hire" id="{{ h.id }}">
-    <h2>{{ h.full_name }} <span class="muted small">· {{ h.role or '' }} · assunzione {{ h.hire_date | fmt }} · {{ h.contract_type | fmt if h.contract_type else 'contratto n/d' }} · {{ h.workplace_region or 'regione n/d' }}</span></h2>
-    {% if not fs %}<p class="empty">Nessun incentivo applicabile secondo le regole lette. Nessuna azione.</p>{% endif %}
+    <div class="hire-head">
+      <h2>{{ m.initials(h.full_name) }} <span>{{ h.full_name }}<span class="muted small" > · {{ h.role or 'ruolo n/d' }}</span></span></h2>
+      <ul class="facts">
+        <li class="b ghost">{{ m.icon('calendar', 'sm') }} {{ h.hire_date | fmt }}</li>
+        <li class="b ghost">{{ h.contract_type | fmt if h.contract_type else 'contratto n/d' }}</li>
+        <li class="b ghost">{{ h.workplace_region or 'regione n/d' }}</li>
+      </ul>
+    </div>
+    {% if not fs %}<p class="empty">{{ m.icon('check') }} <span>Nessun incentivo applicabile secondo le regole lette: per questa assunzione non c'è nulla da fare.</span></p>{% endif %}
     {% for f in fs %}
       {% set rv = reviews.get(f.finding_id) %}
-      <details class="finding {{ 'proposed' if f.proposed else 'alt' }}" {% if f.proposed %}open{% endif %}>
+      {% set mt = f | meter %}
+      {% set is_current = f.finding_id in current_ids %}
+      <details class="finding {{ 'proposed' if is_current else 'alt' }}" {% if is_current %}open{% endif %}>
         <summary>
           <span class="b {{ 'ok' if f.verdict == 'likely_eligible' else 'warn' }}">{{ 'probabile' if f.verdict == 'likely_eligible' else 'da verificare' }}</span>
-          <strong>{{ f.incentive_name }}</strong>
-          <span class="muted">{{ 'proposta' if f.proposed else 'alternativa' }}</span>
-          <span class="amount">{{ f.total_saving_eur | eur if f.total_saving_eur else 'importo n/d' }}</span>
-          {% if rv %}<span class="b {{ 'ok' if rv.decision == 'approvata' else 'bad' }}">{{ rv.decision }} da {{ rv.reviewer }}</span>{% if rv.evidence and f.rule_fingerprint not in rv.evidence %}<span class="b warn">regola aggiornata dopo la decisione</span>{% endif %}{% endif %}
+          <span class="name"><strong>{{ f.incentive_name }}</strong>
+            <span class="muted">{{ 'proposta' if is_current else ('respinta' if rv and rv.decision == 'respinta' else 'alternativa') }} · {{ f.source.label }}</span></span>
+          <span class="amount">{{ m.money(f.total_saving_eur) if f.total_saving_eur else 'importo n/d' }}{% if f.monthly_saving_eur %}<span class="per">{{ f.monthly_saving_eur | eur }}/mese × {{ f.months }}</span>{% endif %}</span>
+          <span class="meter-row">{{ m.meter(mt) }} <span>{{ mt.pass }} soddisfatti · {{ mt.unknown }} da verificare{% if mt.fail %} · {{ mt.fail }} no{% endif %}</span>
+            {% if rv %}<span class="b {{ 'ok' if rv.decision == 'approvata' else 'bad' }}">{{ rv.decision }} da {{ rv.reviewer }}</span>{% if rv.evidence and f.rule_fingerprint not in rv.evidence %}<span class="b warn">regola aggiornata dopo la decisione</span>{% endif %}{% endif %}</span>
         </summary>
         <div class="finding-body">
-          <p>{% if f.monthly_saving_eur %}{{ f.monthly_saving_eur | eur }} al mese × {{ f.months }} mesi.{% else %}Importo non calcolabile: manca la retribuzione o il tetto.{% endif %}
-             Fonte: <a href="{{ f.source.url }}" target="_blank" rel="noopener">{{ f.source.label }}</a>.</p>
-          {% if f.assessment.attestations %}<details class="attest"><summary><strong>Il datore deve attestare</strong> ({{ f.assessment.attestations|length }} condizioni generali)</summary>
-            <ul>{% for a in f.assessment.attestations %}<li>{{ a }}</li>{% endfor %}</ul></details>{% endif %}
-          {% if f.missing %}<p><strong>Da raccogliere o verificare:</strong> {{ f.missing | map('criterion') | join(', ') }}.</p>{% endif %}
-          <ul class="checks">
+          {% set open_checks = f.assessment.checks | selectattr('outcome', 'equalto', 'unknown') | list %}
+          {% if open_checks %}
+          <div class="todo"><strong>{{ m.icon('alert', 'sm') }} Per confermare</strong>
+            <ul>{% for c in open_checks %}<li>{{ c.criterion | criterion }}{% if c.detail %}: {{ c.detail | replace('_', ' ') }}{% endif %}</li>{% endfor %}</ul>
+          </div>
+          {% endif %}
+          {% if not f.monthly_saving_eur %}<p class="muted small">Importo non calcolabile: manca la retribuzione, il tetto o la percentuale di esonero.</p>{% endif %}
+          <details class="evidence"><summary>{{ m.icon('book', 'sm') }} Criteri e citazioni <span class="muted">· {{ mt.pass + mt.unknown + mt.fail }} controlli, ognuno con la frase dell'atto</span></summary>
+          <ul class="checks" aria-label="Criteri">
           {% for c in f.assessment.checks %}
-            <li><span class="b {{ {'pass':'ok','fail':'bad','unknown':'off'}[c.outcome] }}">{{ {'pass':'sì','fail':'no','unknown':'?'}[c.outcome] }}</span>
-              <strong>{{ c.criterion | criterion }}</strong> — {{ c.detail | replace('_', ' ') }}
-              {% if c.citation %}<br><q>{{ c.citation.quote }}</q> <span class="anchor">§{{ c.citation.anchor }}</span>{% endif %}</li>
+            <li>{{ m.outcome_chip(c.outcome) }}
+              <span class="what"><strong>{{ c.criterion | criterion }}</strong> <span class="detail">— {{ c.detail | replace('_', ' ') }}</span>
+              {% if c.citation %}{{ m.source(c.citation.quote, c.citation.anchor) }}{% endif %}</span></li>
           {% endfor %}
-          </ul>
+          </ul></details>
+          {% if f.assessment.attestations %}<details class="attest"><summary><strong>Il datore deve attestare</strong> · {{ f.assessment.attestations|length }} condizioni generali</summary>
+            <ul>{% for a in f.assessment.attestations %}<li>{{ a }}</li>{% endfor %}</ul></details>{% endif %}
+          <p class="muted small">Fonte: <a href="{{ f.source.url }}" target="_blank" rel="noopener">{{ f.source.label }}</a></p>
           {% if user %}
           <form method="post" action="/recupero/{{ wf.company.id }}/decisione" class="decide">
             <input type="hidden" name="csrf" value="{{ user.csrf }}">
             <input type="hidden" name="finding_id" value="{{ f.finding_id }}">
             <input type="hidden" name="rate" value="{{ rate }}">
-            <label class="grow">Nota <input name="note" maxlength="500" placeholder="es. verificato estratto contributivo"></label>
-            <button type="submit" name="decision" value="approvata">Approva</button>
-            <button type="submit" name="decision" value="respinta" class="secondary">Respingi</button>
+            <label class="grow">Nota per il registro <input name="note" maxlength="500" placeholder="es. verificato estratto contributivo"></label>
+            <button type="submit" name="decision" value="approvata">{{ m.icon('check', 'sm') }} Approva</button>
+            <button type="submit" name="decision" value="respinta" class="secondary">{{ m.icon('x', 'sm') }} Respingi</button>
           </form>
-          {% else %}<p class="muted small"><a href="/accesso?next=/recupero/{{ wf.company.id }}">Accedi come consulente</a> per approvare o respingere.</p>{% endif %}
-          {% if rv and rv.note %}<p class="muted small">Nota: {{ rv.note }} ({{ rv.reviewed_at[:16].replace('T', ' ') }})</p>{% endif %}
+          {% else %}<p class="muted small">{{ m.icon('lock', 'sm') }} <a href="/accesso?next=/recupero/{{ wf.company.id }}">Accedi come consulente</a> per approvare o respingere.</p>{% endif %}
+          {% if rv and rv.note %}<p class="decision-note">Nota: {{ rv.note }} · {{ rv.reviewed_at[:16].replace('T', ' ') }}</p>{% endif %}
         </div>
       </details>
     {% endfor %}

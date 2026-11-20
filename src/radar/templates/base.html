@@ -4,21 +4,31 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
+<meta name="color-scheme" content="light dark">
 <title>{% block title %}Agevolazioni Radar{% endblock %}</title>
+<link rel="preload" href="/static/fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/static/app.css">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 </head>
 <body>
+{% import "_macros.html" as m %}
 <header class="top">
   <div class="wrap top-in">
-    <a class="brand" href="/"><span class="dot" aria-hidden="true"></span>Agevolazioni Radar</a>
+    <a class="brand" href="/">
+      <svg class="mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <path d="M4.5 19.5a10.5 10.5 0 0 1 0-15"/><path d="M8 16a5.5 5.5 0 0 1 0-8"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/><path d="M12 12l7.5-7.5"/>
+      </svg>
+      Agevolazioni Radar <small>INPS</small>
+    </a>
     <nav aria-label="Principale">
       {% set p = request.url.path %}
       <a href="/" {% if p == '/' %}aria-current="page"{% endif %}>Panoramica</a>
-      <a href="/catalogo" {% if p.startswith('/catalogo') or p.startswith('/incentivo') %}aria-current="page"{% endif %}>Catalogo</a>
       <a href="/recupero" {% if p.startswith('/recupero') %}aria-current="page"{% endif %}>Recupero</a>
+      <a href="/catalogo" {% if p.startswith('/catalogo') or p.startswith('/incentivo') %}aria-current="page"{% endif %}>Catalogo</a>
       <a href="/verifica" {% if p == '/verifica' %}aria-current="page"{% endif %}>Pre-verifica</a>
       <a href="/chiedi" {% if p == '/chiedi' %}aria-current="page"{% endif %}>Chiedi</a>
       <a href="/stato" {% if p == '/stato' %}aria-current="page"{% endif %}>Stato</a>
+      <span class="sep" aria-hidden="true"></span>
       {% if user %}<form method="post" action="/esci" class="inline"><input type="hidden" name="csrf" value="{{ user.csrf }}"><button class="link" type="submit">Esci ({{ user.username }})</button></form>
       {% else %}<a href="/accesso" {% if p == '/accesso' %}aria-current="page"{% endif %}>Accedi</a>{% endif %}
     </nav>
@@ -28,10 +38,10 @@
 {% block content %}{% endblock %}
 </main>
 <footer class="wrap foot">
-  <p>Fonte: circolari e messaggi pubblici INPS. Ultimo atto letto: <strong>{{ fresh.latest_act_published_on | fmt if fresh.latest_act_published_on else 'n/d' }}</strong>
-  · {{ fresh.acts_scanned }} atti scansionati · {{ fresh.documents_in_kb }} in base di conoscenza.</p>
-  <p>Demo tecnica, non consulenza: le decisioni spettano a un consulente del lavoro (L. 12/1979). Non affiliata a INPS.
-  © 2026 Mykhailo Zvir · MIT License</p>
+  <p><span class="fresh">Ultimo atto INPS letto: <strong>{{ fresh.latest_act_published_on | fmt if fresh.latest_act_published_on else 'n/d' }}</strong></span>
+  · {{ fresh.acts_scanned }} atti scansionati · {{ fresh.documents_in_kb }} in base di conoscenza</p>
+  <p>© 2026 Mykhailo Zvir · MIT</p>
+  <p>Demo tecnica, non consulenza: le decisioni spettano a un consulente del lavoro (L. 12/1979). Non affiliata a INPS.</p>
 </footer>
 </body>
 </html>

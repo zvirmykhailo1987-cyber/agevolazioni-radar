@@ -1,6 +1,8 @@
 {% extends "base.html" %}
+{% import "_macros.html" as m %}
 {% block title %}Chiedi · Agevolazioni Radar{% endblock %}
 {% block content %}
+<p class="eyebrow">Domande sulle circolari</p>
 <h1>Chiedi alle circolari</h1>
 <p class="lead">Risposta solo dai paragrafi INPS recuperati, con citazioni controllate dal codice. Se la fonte non lo dice, la risposta è un rifiuto.</p>
 {% if qa_enabled %}
@@ -16,7 +18,7 @@
   <p class="muted small">{{ result.question }}</p>
   <p class="ans">{{ result.answer }}</p>
   {% if result.citations %}<ol class="cites">
-    {% for c in result.citations %}<li><q>{{ c.quote }}</q> — <a href="{{ c.url }}" target="_blank" rel="noopener">{{ c.doc_label }}</a> <span class="anchor">§{{ c.anchor }}</span></li>{% endfor %}
+    {% for c in result.citations %}<li><span>{{ m.source(c.quote, c.anchor) }}<span class="muted small"><a href="{{ c.url }}" target="_blank" rel="noopener">{{ c.doc_label }}</a></span></span></li>{% endfor %}
   </ol>{% endif %}
   {% if result.rejected_citations %}<p class="muted small">{{ result.rejected_citations }} citazioni scartate dal controllo.</p>{% endif %}
 </section>

@@ -101,9 +101,15 @@ def extract_all(
     limit: int | None = None,
     only: set[str] | None = None,
 ) -> dict[str, int]:
-    stats = {"cached": 0, "extracted": 0, "input_tokens": 0, "output_tokens": 0}
+    """Extract every current document not yet in the cache.
+
+    ``limit`` caps the number of *paid* calls per run (cached documents do not count), newest acts
+    first, so a daily cap never starves recent acts behind old cached ones. One failed call does
+    not stop the run: it is counted and retried on the next run (nothing is cached for it).
+    """
+    stats = {"cached": 0, "extracted": 0, "failed": 0, "deferred": 0, "input_tokens": 0, "output_tokens": 0}
     docs = [d for d in current_documents(con) if not only or str(d["number"]) in only]
-    for doc in docs[:limit]:
+    for doc in reversed(docs):  # newest first
         hit = con.execute(
             "select 1 from kb.extractions where doc_id=? and content_hash=? and prompt_version=? and model=?",
             [doc["doc_id"], doc["content_hash"], PROMPT_VERSION, model],
@@ -111,8 +117,16 @@ def extract_all(
         if hit:
             stats["cached"] += 1
             continue
+        if limit is not None and stats["extracted"] + stats["failed"] >= limit:
+            stats["deferred"] += 1
+            continue
         paras = doc_paragraphs(con, doc["doc_id"], doc["content_hash"])
-        res = extract_rules(paras, title(doc), llm)
+        try:
+            res = extract_rules(paras, title(doc), llm)
+        except Exception as exc:  # network, rate limit, malformed output: retry tomorrow, keep going
+            stats["failed"] += 1
+            print(f"extraction failed for {doc['doc_type']} {doc['number']}: {type(exc).__name__}: {exc}"[:300])
+            continue
         con.execute(
             "insert into kb.extractions values (?,?,?,?,?,?,?,?,?)",
             [

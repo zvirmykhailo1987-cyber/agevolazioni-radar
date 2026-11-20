@@ -1,10 +1,12 @@
 {% extends "base.html" %}
+{% import "_macros.html" as m %}
 {% block title %}{{ rule.name }} · Agevolazioni Radar{% endblock %}
 {% block content %}
-<p class="crumb"><a href="/">Incentivi</a> / {{ rule.incentive_id }}</p>
+<p class="crumb"><a href="/catalogo">Catalogo</a> <span aria-hidden="true">/</span> {{ rule.incentive_id }}</p>
+<p class="eyebrow">Regola consolidata dagli atti INPS</p>
 <h1>{{ rule.name }}</h1>
 <p class="muted">Introdotto da <a href="{{ meta.url }}" rel="noopener" target="_blank">{{ meta.label }}</a>{% if meta.sources|length > 1 %} · aggiornato da {% for s in meta.sources[1:] %}<a href="{{ s.url }}" rel="noopener" target="_blank">{{ s.doc_type }} n. {{ s.number }}</a>{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}</p>
-{% if meta.differences %}<section class="notice-box" id="differenze" role="note"><h2>Differenze tra atti</h2>
+{% if meta.differences %}<section class="notice-box" id="differenze" role="note"><h2>{{ m.icon('alert') }} Differenze tra atti</h2>
   <p class="muted small">Un atto successivo indica un valore diverso. Non viene applicato da solo: decide il consulente, e la decisione resta nel registro.</p>
   <ul class="diffs">{% for c in meta.differences %}<li>
     <strong>{{ labels.get(c.field, c.field) }}</strong>: {{ c.kept_in }} → {{ c.kept | fmt }} · {{ c.other_in }} → {{ c.other | fmt }}{% if c.other_citation %} <span class="anchor">§{{ c.other_citation.anchor }}</span>{% endif %}
@@ -26,9 +28,9 @@
   {% for r in rows %}
     <tr class="st-{{ r.status }}">
       <th scope="row">{{ r.label }}</th>
-      <td>{% if r.value is none %}<span class="muted">—</span>{% else %}{{ r.value | fmt }}{% endif %}</td>
-      <td><span class="b {{ {'verified':'ok','unverified':'warn','absent':'off'}[r.status] }}">{{ {'verified':'verificato','unverified':'scartato','absent':'non indicato'}[r.status] }}</span></td>
-      <td>{% if r.citation %}<q>{{ r.citation.quote }}</q> <span class="anchor">§{{ r.citation.anchor }}</span>{% endif %}</td>
+      <td class="value">{% if r.value is none %}<span class="muted">—</span>{% else %}{{ r.value | fmt }}{% endif %}</td>
+      <td><span class="b {{ {'verified':'ok','unverified':'bad','absent':'off'}[r.status] }}">{{ {'verified':'verificato','unverified':'scartato','absent':'non indicato'}[r.status] }}</span></td>
+      <td>{% if r.citation %}{{ m.source(r.citation.quote, r.citation.anchor, 'src flush') }}{% endif %}</td>
       <td>{% set s = meta.field_sources.get(r.field) %}{% if s %}<a href="{{ s.url }}" rel="noopener" target="_blank" class="small nowrap">{{ s.short }}</a>{% endif %}</td>
     </tr>
   {% endfor %}

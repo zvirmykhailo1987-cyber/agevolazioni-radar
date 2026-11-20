@@ -1,12 +1,14 @@
 {% extends "base.html" %}
+{% import "_macros.html" as m %}
 {% block title %}Pre-verifica · Agevolazioni Radar{% endblock %}
 {% block content %}
+<p class="eyebrow">Una assunzione, un incentivo</p>
 <h1>Pre-verifica di un'assunzione</h1>
 <p class="lead">Il codice confronta il profilo con la regola estratta, criterio per criterio. Dato mancante = «da verificare», mai «no».</p>
 <form method="post" class="form">
   <label>Incentivo
     <select name="incentive_id" required>
-      {% for i in incentives %}<option value="{{ i.incentive_id }}" {% if form.incentive_id == i.incentive_id %}selected{% endif %}>{{ i.name }}</option>{% endfor %}
+      {% for i in incentives | sort(attribute='status') %}<option value="{{ i.incentive_id }}" {% if form.incentive_id == i.incentive_id or (not form.incentive_id and i.incentive_id == 'bonus-giovani-2026') %}selected{% endif %}>{{ i.name }}</option>{% endfor %}
     </select></label>
   <label>Data di assunzione <input type="date" name="hire_date" required value="{{ form.hire_date or '2026-12-01' }}"></label>
   <label>Data di nascita <input type="date" name="worker_birth_date" value="{{ form.worker_birth_date or '' }}"></label>
@@ -19,6 +21,14 @@
     <select name="contract_type"><option value="">non indicato</option>
       {% for v in ['tempo_indeterminato','trasformazione_da_tempo_determinato','apprendistato','tempo_determinato'] %}<option value="{{ v }}" {% if form.contract_type == v %}selected{% endif %}>{{ v.replace('_',' ') }}</option>{% endfor %}
     </select></label>
+  <label>Qualifica
+    <select name="job_level"><option value="">non indicata</option>
+      {% for v in ['operaio','impiegato','quadro','dirigente'] %}<option value="{{ v }}" {% if form.job_level == v %}selected{% endif %}>{{ v }}</option>{% endfor %}
+    </select></label>
+  <label>Svantaggio (Reg. UE 651/2014)
+    <select name="disadvantage"><option value="">non indicato</option>
+      {% for v,l in [('nessuno','nessuno'),('svantaggiato','svantaggiato'),('molto_svantaggiato','molto svantaggiato')] %}<option value="{{ v }}" {% if form.disadvantage == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+    </select></label>
   <label>Regione della sede <input name="workplace_region" maxlength="40" value="{{ form.workplace_region or '' }}" placeholder="es. Puglia"></label>
   <label>Dipendenti del datore <input type="number" min="0" max="100000" name="employer_employees" value="{{ form.employer_employees if form.employer_employees is not none else '' }}"></label>
   <label>Incremento occupazionale netto
@@ -27,17 +37,18 @@
     <select name="employer_has_durc"><option value="">non indicato</option><option value="si" {% if form.employer_has_durc is sameas true %}selected{% endif %}>sì</option><option value="no" {% if form.employer_has_durc is sameas false %}selected{% endif %}>no</option></select></label>
   <label>Applica il CCNL
     <select name="employer_applies_ccnl"><option value="">non indicato</option><option value="si" {% if form.employer_applies_ccnl is sameas true %}selected{% endif %}>sì</option><option value="no" {% if form.employer_applies_ccnl is sameas false %}selected{% endif %}>no</option></select></label>
-  <button type="submit">Verifica</button>
+  <div><button type="submit">{{ m.icon('check', 'sm') }} Verifica</button></div>
 </form>
 {% if result %}
 <section class="card result v-{{ result.verdict }}" aria-live="polite">
+  <p class="eyebrow">Esito della pre-verifica</p>
   <h2>{{ {'likely_eligible':'Probabilmente ammissibile','needs_review':'Da verificare','not_eligible':'Non ammissibile'}[result.verdict] }}</h2>
-  {% if result.max_benefit_eur %}<p>Beneficio massimo teorico: <strong>{{ '{:,.0f}'.format(result.max_benefit_eur).replace(',', '.') }} €</strong> (tetto mensile × durata massima).</p>{% endif %}
+  {% if result.max_benefit_eur %}<p>Beneficio massimo teorico <span class="verdict-big"><strong>{{ m.money(result.max_benefit_eur) }}</strong></span> <span class="muted small">tetto mensile × durata massima</span></p>{% endif %}
   <ul class="checks">
   {% for c in result.checks %}
-    <li class="c-{{ c.outcome }}"><span class="b {{ {'pass':'ok','fail':'bad','unknown':'off'}[c.outcome] }}">{{ {'pass':'sì','fail':'no','unknown':'?'}[c.outcome] }}</span>
-      <strong>{{ c.criterion | criterion }}</strong> — {{ c.detail | replace('_', ' ') }}
-      {% if c.citation %}<br><q>{{ c.citation.quote }}</q> <span class="anchor">§{{ c.citation.anchor }}</span>{% endif %}</li>
+    <li class="c-{{ c.outcome }}">{{ m.outcome_chip(c.outcome) }}
+      <span class="what"><strong>{{ c.criterion | criterion }}</strong> <span class="detail">— {{ c.detail | replace('_', ' ') }}</span>
+      {% if c.citation %}{{ m.source(c.citation.quote, c.citation.anchor) }}{% endif %}</span></li>
   {% endfor %}
   </ul>
   <p class="muted small">{{ result.disclaimer }} Fonte: <a href="{{ result.source.url }}" target="_blank" rel="noopener">{{ result.source.doc }}</a>.</p>

@@ -93,10 +93,39 @@ def test_sign_in_review_and_audit(client):
 
 
 def test_wrong_password_and_login_rate_limit(client):
+    good = {"username": "consulente", "password": "consulente-demo-2026"}
+    for _ in range(15):  # successful sign-ins never count: demo visitors share one address
+        assert client.post("/accesso", data=good, follow_redirects=False).status_code == 303
     for _ in range(10):
         r = client.post("/accesso", data={"username": "consulente", "password": "nope"})
         assert "Credenziali non valide" in r.text
-    assert "Troppe domande" in client.post("/accesso", data={"username": "consulente", "password": "nope"}).text
+    assert "Troppi tentativi" in client.post("/accesso", data={"username": "consulente", "password": "nope"}).text
+    assert "Troppi tentativi" in client.post("/accesso", data=good, follow_redirects=False).text, "locked is locked"
+
+
+def test_operator_password_replaces_the_demo_one_and_hint_is_demo_only(extracted_db, tmp_path, monkeypatch):
+    monkeypatch.setenv("RADAR_COOKIE_SECURE", "0")
+    state = AppState(tmp_path / "pw.db")
+    TestClient(create_app(Store(extracted_db), llm=None, state=state))  # first start: default password
+    import secrets
+
+    fresh = secrets.token_urlsafe(12)  # generated per run: no credential in the repository
+    monkeypatch.setenv("RADAR_DEMO_PASSWORD", fresh)
+    c = TestClient(create_app(Store(extracted_db), llm=None, state=state))
+    old = c.post("/accesso", data={"username": "consulente", "password": "consulente-demo-2026"})
+    assert "Credenziali non valide" in old.text
+    new = c.post("/accesso", data={"username": "consulente", "password": fresh}, follow_redirects=False)
+    assert new.status_code == 303
+    assert "consulente-demo-2026" not in c.get("/accesso").text
+
+
+def test_non_ascii_csrf_is_a_403_not_a_500(client):
+    login(client)
+    assert client.post("/esci", data={"csrf": "é"}).status_code == 403
+    r = client.post(
+        "/recupero/trattoria-puglia/decisione", data={"finding_id": "x", "decision": "approvata", "csrf": "é"}
+    )
+    assert r.status_code == 403
 
 
 @pytest.mark.parametrize(
@@ -166,7 +195,7 @@ def test_resolving_a_difference_applies_the_choice_and_logs_it(extracted_db, app
     st.apply_resolutions({}, version=-1)
     c = TestClient(create_app(st, llm=FakeLLM({}), state=app_state))
     assert "Differenze tra atti" in c.get("/incentivo/bonus-giovani-2026").text
-    assert c.get("/catalogo").text.count("1 da verificare") == 1
+    assert c.get("/catalogo").text.count("1 differenza da decidere") == 1
     assert (
         c.post(
             "/incentivo/bonus-giovani-2026/differenza",
@@ -195,7 +224,7 @@ def test_resolving_a_difference_applies_the_choice_and_logs_it(extracted_db, app
     page = c.get("/incentivo/bonus-giovani-2026").text
     assert "risolta" in page and "messaggio successivo" in page
     assert st.merged["bonus-giovani-2026"].rule.monthly_cap_eur.value == 550.0
-    assert "1 da verificare" not in c.get("/catalogo").text
+    assert "1 differenza da decidere" not in c.get("/catalogo").text
     # changing the decision back really reverts: merged rules are rebuilt from the pristine merge
     c.post("/incentivo/bonus-giovani-2026/differenza", data={"diff_key": "k1", "choice": "kept", "csrf": csrf})
     c.get("/catalogo")

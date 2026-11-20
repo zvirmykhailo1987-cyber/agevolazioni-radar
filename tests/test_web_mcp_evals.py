@@ -52,7 +52,7 @@ def test_precheck_form(client):
     )
     # zes_regions in the fixture carries an invented quote: the gate drops it, so the
     # pre-check fails closed ("to be checked") instead of treating the condition as met.
-    assert r.status_code == 200 and "Da verificare" in r.text and "12.000 €" in r.text
+    assert r.status_code == 200 and "Da verificare" in r.text and "12.000<small>€</small>" in r.text
     assert "scartato dal controllo" in r.text
     r = client.post("/verifica", data={"incentive_id": "bonus-giovani-2026", "hire_date": "2026-06-01"})
     assert "Da verificare" in r.text
@@ -282,3 +282,15 @@ def test_retrieval_recall_is_measured_per_split(extracted_db, tmp_path):
     out = evals.retrieval_recall(Store(extracted_db), golden)
     assert out["dev"] == {"hits": 1, "of": 1, "recall": 1.0} and out["holdout"]["recall"] == 0.0
     assert out["mode"] == "bm25"
+
+
+def test_diagnostic_eval_leaves_the_store_as_shipped():
+    from radar.store import Store
+
+    s = Store()  # the shipped knowledge base, if present
+    if not s.merged:
+        pytest.skip("no local knowledge base")
+    before = {i: len([d for d in m.differences if not d.get("resolved")]) for i, m in s.merged.items()}
+    evals.score_recupero_both(s)
+    after = {i: len([d for d in m.differences if not d.get("resolved")]) for i, m in s.merged.items()}
+    assert before == after

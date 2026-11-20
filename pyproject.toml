@@ -27,7 +27,7 @@ dependencies = [
 
 [project.optional-dependencies]
 embeddings = ["fastembed>=0.7", "numpy>=2.0"]  # optional dense retrieval, off by default (ADR-2)
-dev = ["fastembed>=0.7", "numpy>=2.0", "pytest>=8", "pytest-cov>=6", "ruff>=0.14", "mypy>=1.18", "pip-audit>=2.9", "bandit>=1.8"]
+dev = ["fastembed>=0.7", "numpy>=2.0", "pytest>=8", "pytest-cov>=6", "hypothesis>=6.135", "ruff>=0.14", "mypy>=1.18", "pip-audit>=2.9", "bandit>=1.8"]
 
 [project.scripts]
 radar-load = "radar.pipeline:main"

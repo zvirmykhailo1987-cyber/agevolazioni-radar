@@ -17,7 +17,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from radar.rules import CITED_FIELDS, FREE_TEXT_FIELDS, Citation, IncentiveRule
 
@@ -31,10 +31,10 @@ class HireProfile(BaseModel):
     hire_date: date
     worker_birth_date: date | None = None
     worker_gender: Literal["F", "M", "X"] | None = None
-    months_without_regular_job: int | None = None
+    months_without_regular_job: int | None = Field(default=None, ge=0, le=600)
     contract_type: str | None = None
     workplace_region: str | None = None
-    employer_employees: int | None = None
+    employer_employees: int | None = Field(default=None, ge=0, le=1_000_000)
     employer_has_durc: bool | None = None
     employer_applies_ccnl: bool | None = None
     net_job_increase: bool | None = None
@@ -42,47 +42,83 @@ class HireProfile(BaseModel):
     disadvantage: Literal["nessuno", "svantaggiato", "molto_svantaggiato"] | None = None  # DM 17 ottobre 2017
 
 
-EXCLUDED_CONTRACT_WORDS = ("apprendist", "domestic", "intermittent")
+# Whitelist, not keywords: code settles a condition only when the WHOLE sentence is one of the
+# phrasings INPS uses (variants seen in the corpus). Anything else - an extra clause, an age, a
+# region, a programme, a negation, an exception - stays "to check" for the consultant, because a
+# wrong "pass" is the worst error this system can make (independent review, rounds 2 and 3).
+_SUBJECT = r"(?:(?:assunzione di |assunzioni di )?(?:lavorat(?:ore|ori|rice|rici)|giovan[ei]|donn[ae]|personale) )?"
+_REF = (
+    r"(?: (?:secondo|ai sensi)"
+    r"(?: (?:le|i|la|il|del|dell'|della|delle|categorie|criteri|definizione|regolamento|reg\.|\(ue\)|ue|n\.))*"
+    r" (?:651/2014|17 ottobre 2017))?"
+)
+_SVANTAGGIO = re.compile(rf"{_SUBJECT}(molto )?svantaggiat[aeio](?: o (molto )?svantaggiat[aeio])?{_REF}\.?")
+_NON_DIRIGENTE = re.compile(
+    r"(?:personale(?: assunto)? )?non dirigenziale\.?"
+    r"|qualifica di operaio, impiegato o quadro; escluso il personale dirigenziale\.?"
+)
+_TRASFORMAZIONE = re.compile(
+    r"non spetta per (?:la|le) trasformazion[ei](?: (?:a|in) (?:rapporti? a )?tempo indeterminato)?"
+    r"(?: di rapporti? a (?:termine|tempo determinato))?\.?"
+    r"|solo assunzioni a tempo indeterminato, non trasformazioni di rapporti a termine\.?"
+)
+# one excluded item of an "Esclusi ..." list -> canonical contract type of the hire profile
+_CONTRACT_ITEM = re.compile(
+    r"(?:(?:i|il|lo|le|gli|di|dei|delle|con)\s+)*(?:(?:rapport[oi]|contratt[oi]|prestazioni)\s+)?"
+    r"(?:di\s+)?(?:lavoro\s+)?(apprendistato|domestic[oi]|intermittente|occasionale|a tempo determinato|a termine)"
+)
+_CANONICAL = {
+    "apprendistato": "apprendistato",
+    "domestico": "lavoro_domestico",
+    "domestici": "lavoro_domestico",
+    "intermittente": "lavoro_intermittente",
+    "occasionale": "lavoro_occasionale",
+    "a tempo determinato": "tempo_determinato",
+    "a termine": "tempo_determinato",
+}
+
+
+def _excluded_contracts(t: str) -> set[str] | None:
+    """{'apprendistato', ...} for a pure exclusion list of contract types, else None."""
+    m = re.fullmatch(r"(?:sono )?esclus[iea] (.+?)\.?", t)
+    if not m:
+        return None
+    items = [i for i in re.split(r",\s*|\s+e\s+", m.group(1)) if i]
+    out: set[str] = set()
+    for item in items:
+        hit = _CONTRACT_ITEM.fullmatch(item.strip())
+        if not hit:  # a sector, a category of employer, "anche a tempo indeterminato": not ours to judge
+            return None
+        out.add(_CANONICAL[hit.group(1)])
+    return out
 
 
 def resolve_condition(text: str, hire: HireProfile) -> tuple[Outcome, str] | None:
     """Settle a worker condition from profile data when its meaning is unambiguous.
 
     Returns (outcome, which profile field decided) or None when code cannot judge the
-    text; the condition then stays "unknown" for the consultant. Deliberately small:
-    each rule is a phrase INPS uses verbatim in many circulars.
+    text; the condition then stays "unknown" for the consultant.
     """
-    t = " ".join(text.lower().split())
-    topics = {
-        "dirigente": "dirigen" in t,
-        "svantaggio": "svantaggiat" in t,
-        "contratto": any(w in t for w in EXCLUDED_CONTRACT_WORDS),
-        "trasformazione": "trasformazion" in t,
-        "deroga": "deroga" in t or "richiest" in t or "salvo" in t or "tranne" in t,
-    }
-    # Conservative by design: a sentence that mixes topics, or carries an exception, stays with
-    # the consultant. A wrong "pass" is the worst error this system can make.
-    if sum(topics.values()) != 1 or topics["deroga"]:
-        return None
-    if topics["dirigente"]:
-        if not re.fullmatch(r"(personale )?non dirigenziale\.?", t) or hire.job_level is None:
+    t = " ".join(text.lower().replace("’", "'").split())
+    if _NON_DIRIGENTE.fullmatch(t):
+        if hire.job_level is None:
             return None
         return ("pass" if hire.job_level != "dirigente" else "fail", f"qualifica: {hire.job_level}")
-    if topics["svantaggio"]:
-        if hire.disadvantage is None or "non " in t:
+    if m := _SVANTAGGIO.fullmatch(t):
+        if hire.disadvantage is None:
             return None
-        either = re.search(r"svantaggiat[aeio] o molto svantaggiat", t) is not None
-        need = ("svantaggiato", "molto_svantaggiato") if either or "molto" not in t else ("molto_svantaggiato",)
+        plain = not m.group(1) or (" o " in t and not m.group(2))  # an un-qualified "svantaggiato" is named
+        need = ("svantaggiato", "molto_svantaggiato") if plain else ("molto_svantaggiato",)
         return ("pass" if hire.disadvantage in need else "fail", f"condizione: {hire.disadvantage.replace('_', ' ')}")
-    if topics["contratto"]:
-        if not t.startswith("esclus") or hire.contract_type is None:
+    if (excluded := _excluded_contracts(t)) is not None:
+        if hire.contract_type is None:
             return None
-        bad = any(w in hire.contract_type for w in EXCLUDED_CONTRACT_WORDS)
+        bad = hire.contract_type in excluded
         return ("fail" if bad else "pass", f"contratto: {hire.contract_type.replace('_', ' ')}")
-    if topics["trasformazione"]:
-        if not t.startswith("non spetta per la trasformazione") or hire.contract_type is None:
+    if _TRASFORMAZIONE.fullmatch(t):
+        if hire.contract_type is None:
             return None
-        conv = "trasformazione" in hire.contract_type
+        conv = hire.contract_type.startswith("trasformazione")
         return ("fail" if conv else "pass", f"contratto: {hire.contract_type.replace('_', ' ')}")
     return None
 
@@ -125,12 +161,36 @@ def _norm_region(s: str) -> str:
     return s.strip().lower().replace("’", "'")
 
 
+# which rule fields each criterion reads: a contested field cannot produce a hard "no"
+CRITERION_FIELDS: dict[str, tuple[str, ...]] = {
+    "hire_window": ("hire_from", "hire_to"),
+    "worker_age": ("worker_max_age_exclusive",),
+    "worker_min_age": ("worker_min_age",),
+    "worker_gender": ("worker_gender",),
+    "months_without_regular_job": ("min_months_without_regular_job",),
+    "contract_type": ("contract_types",),
+    "employer_size": ("employer_max_employees",),
+    "zes_region": ("only_zes_regions", "zes_regions"),
+    "durc": ("requires_durc",),
+    "ccnl_compliance": ("requires_ccnl_compliance",),
+    "net_job_increase": ("requires_net_job_increase",),
+}
+
+
 def assess(
-    rule: IncentiveRule, hire: HireProfile, pending_differences: int = 0, required: tuple[str, ...] = ()
+    rule: IncentiveRule,
+    hire: HireProfile,
+    pending_differences: int = 0,
+    required: tuple[str, ...] = (),
+    contested: frozenset[str] = frozenset(),
 ) -> Assessment:
+    """``contested``: fields where acts disagree and no consultant has decided yet. A criterion
+    that fails on such a field becomes "to check": the other act's value might let the hire in."""
     checks: list[Check] = []
 
     def add(criterion: str, outcome: Outcome, detail: str, cit: Citation | None = None) -> None:
+        if outcome == "fail" and contested & set(CRITERION_FIELDS.get(criterion, ())):
+            outcome, detail = "unknown", f"{detail} - valore in discussione tra atti"
         checks.append(Check(criterion, outcome, detail, cit))
 
     # Hiring window
@@ -268,8 +328,10 @@ def assess(
             add(f"manca:{name}", "unknown", "requisito previsto, non letto dagli atti: verificare nel testo")
 
     # Fail closed: a condition the model stated but the gate could not ground is not "passed".
+    # Only descriptive texts (legal basis, procedure) may be dropped without effect.
     for name in CITED_FIELDS:
-        if name not in FREE_TEXT_FIELDS and getattr(rule, name).status == "unverified":
+        descriptive = name in FREE_TEXT_FIELDS and name != "other_conditions"
+        if not descriptive and getattr(rule, name).status == "unverified":
             add(name, "unknown", "valore scartato dal controllo delle citazioni: verificare nel testo")
     if pending_differences:
         noun = "differenza" if pending_differences == 1 else "differenze"

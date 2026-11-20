@@ -16,7 +16,7 @@ Five-minute walkthrough: [docs/DEMO.md](docs/DEMO.md).
 > Technical demo, not advice. In Italy the decision on payroll incentives belongs to a *consulente del lavoro*
 > (L. 12/1979). This system pre-screens, cites and estimates; it never decides. Not affiliated with INPS.
 
-![Incentive page: every value with its quote, paragraph and act](docs/screenshot-incentive.png)
+![Recupero: the consultant's work queue for one company](docs/screenshot-recupero.png)
 
 ## Why it is built this way
 
@@ -79,11 +79,35 @@ The engine is conservative on purpose: worker conditions it cannot settle from d
 acts and required criteria missing from the extraction all become "to check". The answer key and the companies are
 the author's; an independent key from a payroll consultant is the next step.
 
-**Code:** 135 tests, offline (fake INPS over `httpx.MockTransport`, fake LLM, real dlt + dbt in a temporary DuckDB),
-96% line+branch coverage (gate 90% in CI), `mypy --strict`, ruff, bandit, pip-audit. Mutation check: each guarantee is removed on purpose
-and a test must fail ([docs/mutation-results.json](docs/mutation-results.json)) — citation gate, conservative
-resolvers, required criteria, fail-closed eligibility, Rome dates, version dedup, CSRF, session expiry, visitor
-isolation in the demo, CSV formula escaping, rate limits, the CSP header.
+**Code:** 183 tests, offline (fake INPS over `httpx.MockTransport`, fake LLM, real dlt + dbt in a temporary DuckDB),
+96% line+branch coverage (gate 90% in CI), `mypy --strict`, ruff, bandit, pip-audit.
+
+**Crash tests of the full cycle** ([tests/test_crash.py](tests/test_crash.py)): INPS down (three tries, then a loud
+failure, yesterday's data untouched); a half-filled listing row (skipped, the rest loads); a model call that times out
+(counted, retried next run, the refresh continues); a daily spending cap (spent on the newest acts, cached ones do not
+count); hostile HTML and spreadsheet formulas in the model's output (escaped on every page and in the CSV); a broken
+database file mid-swap (the app keeps serving the last good one); 8 consultants deciding at once (no 500, no lost
+decision); 11 hostile URLs (no 500, no file outside `static/`, no open redirect). Writing them found three real
+defects, now fixed: the daily cap counted cached acts, so new acts were never extracted on the server; one bad row
+aborted the whole load; `?rate=nan` returned a 500.
+
+**Property-based simulation** ([tests/test_properties.py](tests/test_properties.py), Hypothesis, 2,800 random rules ×
+hires per run): less hire data, a value the gate dropped or an open difference never makes a verdict more favourable;
+an estimate never exceeds the stated cap; the condition reader stays silent on anything but a known phrase.
+
+**Scale simulation** ([scripts/simulate.py](scripts/simulate.py) → [docs/simulation.json](docs/simulation.json)):
+2,000 synthetic hires against the real knowledge base in under 2 s, 0 invariant violations (one proposal per hire,
+never outside a confirmed hiring window, never above the cap, totals add up, rejections reflected); 400 concurrent
+page requests, 0 errors. It also showed that every proposal is "to check" — which is why the company page is built as
+a work queue ([docs/DESIGN.md](docs/DESIGN.md)).
+
+**Independent review:** an adversarial reviewer with no access to the author's reasoning ran the code and reported
+9 defects; all are fixed with a regression test each (among them: one Italian word order turned an eligible hire into
+"not eligible"; a condition dropped by the citation gate disappeared instead of blocking "likely"; a contested value
+could exclude a hire; non-ASCII CSRF tokens caused a 500).
+
+**Mutation check:** each guarantee above is removed on purpose and a test must fail
+([docs/mutation-results.json](docs/mutation-results.json)).
 
 **Cost:** extracting all 49 acts took 0.72M input and 0.11M output tokens (prompt v6), once. Afterwards only new or
 corrected acts are extracted: results are cached by text hash, prompt version and model, and the server caps a daily

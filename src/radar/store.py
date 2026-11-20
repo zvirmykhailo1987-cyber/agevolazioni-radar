@@ -175,11 +175,13 @@ class Store:
         if not found:
             return None
         rule, meta = found
+        open_diffs = [d for d in meta["differences"] if not d.get("resolved")]
         out = assess(
             rule,
             profile,
-            pending_differences=len([d for d in meta["differences"] if not d.get("resolved")]),
+            pending_differences=len(open_diffs),
             required=self.required(incentive_id),
+            contested=frozenset(d["field"] for d in open_diffs),
         ).as_dict()
         out["source"] = {"doc": meta["label"], "url": meta["url"]}
         out["sources"] = [x["label"] for x in meta["sources"]]

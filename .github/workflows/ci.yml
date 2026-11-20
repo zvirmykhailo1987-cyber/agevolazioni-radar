@@ -13,7 +13,7 @@ jobs:
         run: ruff check src tests
       - name: Types
         run: mypy
-      - name: Tests (offline: fake INPS, fake LLM, real dlt + dbt in a temp DuckDB)
+      - name: "Tests (offline: fake INPS, fake LLM, real dlt + dbt in a temp DuckDB)"
         run: pytest --cov --cov-report=term-missing
       - name: dbt parse
         run: dbt parse --project-dir dbt --profiles-dir dbt

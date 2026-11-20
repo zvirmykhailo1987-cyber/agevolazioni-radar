@@ -1,0 +1,185 @@
+Metadata-Version: 2.4
+Name: agevolazioni-radar
+Version: 0.1.0
+Summary: INPS hiring incentives as a versioned, cited knowledge base: dlt + dbt + DuckDB, Claude extraction with a citation gate, RAG, MCP server, evals.
+Author: Mykhailo Zvir
+License: MIT
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: dlt[duckdb]>=1.32
+Requires-Dist: dbt-duckdb>=1.11
+Requires-Dist: duckdb>=1.5
+Requires-Dist: anthropic>=2.11
+Requires-Dist: mcp>=2.3
+Requires-Dist: langchain-core>=1.8
+Requires-Dist: langchain-community>=0.4
+Requires-Dist: rank-bm25>=0.2.2
+Requires-Dist: fastapi>=0.165
+Requires-Dist: uvicorn>=0.38
+Requires-Dist: jinja2>=3.1
+Requires-Dist: python-multipart>=0.0.20
+Requires-Dist: pydantic>=2.14
+Requires-Dist: httpx>=0.28
+Requires-Dist: tzdata>=2025.2
+Requires-Dist: pyyaml>=6.0
+Provides-Extra: embeddings
+Requires-Dist: fastembed>=0.7; extra == "embeddings"
+Requires-Dist: numpy>=2.0; extra == "embeddings"
+Provides-Extra: dev
+Requires-Dist: fastembed>=0.7; extra == "dev"
+Requires-Dist: numpy>=2.0; extra == "dev"
+Requires-Dist: pytest>=8; extra == "dev"
+Requires-Dist: pytest-cov>=6; extra == "dev"
+Requires-Dist: hypothesis>=6.135; extra == "dev"
+Requires-Dist: ruff>=0.14; extra == "dev"
+Requires-Dist: mypy>=1.18; extra == "dev"
+Requires-Dist: pip-audit>=2.9; extra == "dev"
+Requires-Dist: bandit>=1.8; extra == "dev"
+Dynamic: license-file
+
+# Agevolazioni Radar
+
+[![ci](https://github.com/zvirmykhailo1987-cyber/agevolazioni-radar/actions/workflows/ci.yml/badge.svg)](https://github.com/zvirmykhailo1987-cyber/agevolazioni-radar/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+**Italian hiring incentives, read from the source and applied to a company's hires.** A daily pipeline loads INPS
+circulars and messages, versions their text and turns each incentive into a rule in which every value carries the
+paragraph and the exact words it was read from. *Recupero* checks every hire of a company against every incentive,
+estimates the contribution saving and hands each proposal to a *consulente del lavoro*, who approves or rejects it.
+Agents use the same knowledge base through an MCP server.
+
+**Live demo:** https://incentivi-demo.159.195.219.73.sslip.io — public INPS data, two synthetic example companies.
+Consultant sign-in: `consulente` / `consulente-demo-2026` (each visitor's decisions stay in their own session).
+Five-minute walkthrough: [docs/DEMO.md](docs/DEMO.md).
+
+> Technical demo, not advice. In Italy the decision on payroll incentives belongs to a *consulente del lavoro*
+> (L. 12/1979). This system pre-screens, cites and estimates; it never decides. Not affiliated with INPS.
+
+![Recupero: the consultant's work queue for one company](docs/screenshot-recupero.png)
+
+## Why it is built this way
+
+Incentive rules change through a chain of acts: a law, then a circular, then operating messages, sometimes a
+corrected circular. Secondary sources often get the details wrong. Example from this corpus: circular 56 says the
+2026 ZES bonus needs a worker who has **reached** 35, an employer with **at most 10** employees, and covers **ten**
+regions, Marche and Umbria included. A system that proposes money to an employer has to stand on the primary text,
+keep its versions, say "not stated" instead of guessing, and leave the decision to the professional.
+
+## What it does
+
+| | |
+|---|---|
+| **Load and version** | `dlt` source over the public JSON endpoints behind inps.it: 651 acts since January 2025, 49 of them about employer contribution incentives. Each run re-reads the last 120 days, because INPS corrects acts after publication; a text row is appended only when its hash is new. `dbt` on DuckDB builds a version table (SCD2 on the text hash) and the knowledge-base input; source freshness warns after 2 days. Dates in Europe/Rome time (UTC puts every act one day early). |
+| **Anchored paragraphs** | INPS HTML becomes numbered paragraphs (`§4.p2`, 4,419 in total), so every value and every answer can point at one place in one act. |
+| **Extraction with a citation gate** | Claude fills a strict schema through structured outputs, "null if not stated". A value is kept only if its quote (4+ whole words) is in the cited paragraph **and** states the value: digits or Italian number words, full dates, each region by name. Conditions the schema cannot hold ("madre di almeno tre figli") are extracted as text, tagged as about the worker or the employer, and never assumed true. The gate is re-applied to stored model output on every read. |
+| **Registry and consolidation** | A human-maintained registry (18 incentives, aliases, required criteria) maps acts to incentives; an unmapped incentive is reported, never merged by guess. The earliest act is primary; a later act fills gaps; a *different* value is shown for review and applied only when a consultant decides, difference by difference. |
+| **Eligibility (code, not the model)** | Per criterion: pass / fail / to check, with the quote behind each line. Missing hire data, a value the gate dropped, a required criterion the acts did not yield, an open-ended hiring window or an unresolved difference all mean "to check" — never "passed". A few exact INPS phrases ("Personale non dirigenziale") are settled from profile data; a sentence that mixes topics or carries an exception stays with the consultant. |
+| **Recupero (the agent)** | Every hire × incentive. Saving = min(salary × employer rate × exemption %, monthly cap) × duration, with the ZES cap where the region qualifies and the employer rate shown as an assumption. One proposal per hire (incentives treated as not cumulable), alternatives listed, employer conditions as an attestation checklist, CSV export. |
+| **Human in the loop** | Consultant sign-in (scrypt, session token stored as a hash, CSRF on every write, 8-hour expiry), approve/reject with a note, an append-only audit log; rejected proposals leave the totals. |
+| **Q&A and MCP** | BM25 over the paragraphs, indexed with each act's subject. Every quote must be in its paragraph and every figure in the answer must appear in the retrieved text, otherwise the answer becomes a refusal. MCP tools (read-only): `search_passages`, `list_incentives`, `get_incentive`, `check_eligibility`, `diff_versions`, `kb_status`. |
+| **Operations** | Airflow DAG and a server cron (weekdays, Rome time): load, dbt build, paragraphs, extraction of new or changed acts, eval alert; the refresh runs on a copy and swaps it in atomically. LLM call log (tokens, latency, errors), status page with eval history and loads, CSP and rate limits on live questions. |
+
+Architecture and failure modes: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Decisions a reviewer will question
+(DuckDB vs Snowflake, why dense retrieval is off, why the model never decides): [docs/DECISIONS.md](docs/DECISIONS.md).
+Product scope: [docs/PRODUCT-SPEC.md](docs/PRODUCT-SPEC.md).
+
+## Measured (20 Nov 2026)
+
+**Grounded Q&A** — [golden set](evals/golden_qa.json): 24 *dev* questions used while tuning, 8 *holdout* questions
+written afterwards and never used for tuning, 7 questions the sources do not answer (2 of them on-topic near
+misses). 3 runs each, scored on whole words; min and max equal the mean unless shown.
+
+| | dev (24) | holdout (8) |
+|---|---|---|
+| Answer states the expected facts | 92% | 75% |
+| A cited paragraph itself states those facts | 90% (88–92) | 75% |
+| Refuses when the sources are silent | 5/5 | 2/2 |
+| Quotes rejected by the gate | 0 | 0 |
+| Gold paragraph among the top 10 retrieved (no LLM) | 18/24 | 5/8 |
+
+Every answered question stated the expected facts; every miss was a refusal, not a wrong answer. The misses are
+retrieval misses. Dense retrieval (MiniLM embeddings fused with BM25) was measured and did worse on this corpus, so it
+ships switched off ([ADR-2](docs/DECISIONS.md)).
+
+**Extraction:** 26/27 hand-labelled fields across circulars 55, 56 and 57, including fields that must stay empty. The
+miss: circular 56 also admits *somministrazione*; the model returned only *tempo indeterminato*.
+
+**Recupero** — [answer key](evals/golden_recupero.json) for the two example companies (8 expected findings), written
+by hand from the circulars:
+
+| | |
+|---|---|
+| Expected findings surfaced (recall) | 8/8 |
+| Surfaced findings that are expected (precision) | 8/8 |
+| Wrong "probabile" (would cost the employer money) | 0 |
+| Verdict "to check" where the key says "probabile" | 5/8 |
+
+The engine is conservative on purpose: worker conditions it cannot settle from data, unresolved differences between
+acts and required criteria missing from the extraction all become "to check". The answer key and the companies are
+the author's; an independent key from a payroll consultant is the next step.
+
+**Code:** 183 tests, offline (fake INPS over `httpx.MockTransport`, fake LLM, real dlt + dbt in a temporary DuckDB),
+96% line+branch coverage (gate 90% in CI), `mypy --strict`, ruff, bandit, pip-audit.
+
+**Crash tests of the full cycle** ([tests/test_crash.py](tests/test_crash.py)): INPS down (three tries, then a loud
+failure, yesterday's data untouched); a half-filled listing row (skipped, the rest loads); a model call that times out
+(counted, retried next run, the refresh continues); a daily spending cap (spent on the newest acts, cached ones do not
+count); hostile HTML and spreadsheet formulas in the model's output (escaped on every page and in the CSV); a broken
+database file mid-swap (the app keeps serving the last good one); 8 consultants deciding at once (no 500, no lost
+decision); 11 hostile URLs (no 500, no file outside `static/`, no open redirect). Writing them found three real
+defects, now fixed: the daily cap counted cached acts, so new acts were never extracted on the server; one bad row
+aborted the whole load; `?rate=nan` returned a 500.
+
+**Property-based simulation** ([tests/test_properties.py](tests/test_properties.py), Hypothesis, 2,800 random rules ×
+hires per run): less hire data, a value the gate dropped or an open difference never makes a verdict more favourable;
+an estimate never exceeds the stated cap; the condition reader stays silent on anything but a known phrase.
+
+**Scale simulation** ([scripts/simulate.py](scripts/simulate.py) → [docs/simulation.json](docs/simulation.json)):
+2,000 synthetic hires against the real knowledge base in under 2 s, 0 invariant violations (one proposal per hire,
+never outside a confirmed hiring window, never above the cap, totals add up, rejections reflected); 400 concurrent
+page requests, 0 errors. It also showed that every proposal is "to check" — which is why the company page is built as
+a work queue ([docs/DESIGN.md](docs/DESIGN.md)).
+
+**Independent review:** an adversarial reviewer with no access to the author's reasoning ran the code and reported
+9 defects; all are fixed with a regression test each (among them: one Italian word order turned an eligible hire into
+"not eligible"; a condition dropped by the citation gate disappeared instead of blocking "likely"; a contested value
+could exclude a hire; non-ASCII CSRF tokens caused a 500).
+
+**Mutation check:** each guarantee above is removed on purpose and a test must fail
+([docs/mutation-results.json](docs/mutation-results.json)).
+
+**Cost:** extracting all 49 acts took 0.72M input and 0.11M output tokens (prompt v6), once. Afterwards only new or
+corrected acts are extracted: results are cached by text hash, prompt version and model, and the server caps a daily
+refresh at 10 extractions.
+
+## Run it
+
+```bash
+python -m venv .venv && . .venv/bin/activate
+pip install -c requirements.lock -e ".[dev]"
+cp .env.example .env.local            # ANTHROPIC_API_KEY=... (extraction, evals and live Q&A only)
+
+radar-load --since 2025-01-01         # INPS -> DuckDB (data/radar.duckdb)
+dbt build --project-dir dbt --profiles-dir dbt
+radar-kb paragraphs && radar-kb extract
+radar-evals --repeats 3 --baseline evals/results/baseline.json   # non-zero exit on any regression
+radar-web                             # http://localhost:8040
+radar-mcp                             # MCP over stdio (Claude Desktop, Claude Code)
+pytest                                # no network, no API key
+```
+
+`docker compose up` runs the web app with the knowledge base mounted read-only.
+
+## Known limits
+
+- Retrieval misses 3 of 8 holdout questions; the system then refuses rather than answers.
+- INPS acts only, since 2025; laws in Gazzetta Ufficiale and CCNL texts are not loaded.
+- Savings assume the maximum duration and an employer contribution rate; actual start date, part-time and
+  terminations are not modelled.
+- Cumulability between incentives is not modelled; the consultant chooses between the proposal and its alternatives.
+- The registry, the answer keys and the example companies are written by the author.
+
+## License
+
+[MIT](LICENSE) © 2026 Mykhailo Zvir

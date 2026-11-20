@@ -285,12 +285,53 @@ def test_retrieval_recall_is_measured_per_split(extracted_db, tmp_path):
 
 
 def test_diagnostic_eval_leaves_the_store_as_shipped():
-    from radar.store import Store
+    from radar.store import DB_PATH, Store
 
-    s = Store()  # the shipped knowledge base, if present
-    if not s.merged:
+    if not DB_PATH.exists():  # needs the real knowledge base (acts that disagree); CI builds none
         pytest.skip("no local knowledge base")
+    s = Store()
     before = {i: len([d for d in m.differences if not d.get("resolved")]) for i, m in s.merged.items()}
     evals.score_recupero_both(s)
     after = {i: len([d for d in m.differences if not d.get("resolved")]) for i, m in s.merged.items()}
     assert before == after
+
+
+def test_every_static_file_ships_in_the_package(tmp_path):
+    """The Docker image installs the wheel, not the source tree: a static file missing from
+    package-data is a 404 in production only (it happened with the fonts)."""
+    import subprocess
+    import sys
+    import zipfile
+    from pathlib import Path
+
+    import shutil
+
+    root = Path(__file__).resolve().parents[1]
+    clean = tmp_path / "src-copy"  # like the Docker build: no egg-info left by an editable install
+    clean.mkdir()
+    for name in ("pyproject.toml", "README.md", "LICENSE"):
+        shutil.copy(root / name, clean / name)
+    shutil.copytree(root / "src", clean / "src", ignore=shutil.ignore_patterns("*.egg-info", "__pycache__"))
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "wheel",
+            "--no-deps",
+            "--no-build-isolation",
+            "-q",
+            "-w",
+            str(tmp_path),
+            str(root),
+        ],
+        check=True,
+    )
+    names = set(zipfile.ZipFile(next(tmp_path.glob("*.whl"))).namelist())
+    static = root / "src" / "radar" / "static"
+    for f in static.rglob("*"):
+        if f.is_file() and f.suffix != ".txt":
+            assert f"radar/static/{f.relative_to(static).as_posix()}" in names, f
+    templates = root / "src" / "radar" / "templates"
+    for f in templates.glob("*.html"):
+        assert f"radar/templates/{f.name}" in names, f

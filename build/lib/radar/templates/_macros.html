@@ -1,0 +1,34 @@
+{# Shared pieces of the design system (docs/DESIGN.md). #}
+{% macro icon(name, cls='') -%}
+<svg class="i {{ cls }}" aria-hidden="true" focusable="false"><use href="/static/icons.svg#{{ name }}"></use></svg>
+{%- endmacro %}
+
+{% macro money(v) -%}
+{%- if v is none -%}<span class="muted">n/d</span>
+{%- else -%}<span class="eur">{{ (v | eur)[:-2] }}<small>€</small></span>{%- endif -%}
+{%- endmacro %}
+
+{# the source thread: INPS words in serif, with the paragraph tag #}
+{% macro source(quote, anchor, cls='src') -%}
+<span class="{{ cls }}"><q>{{ quote }}</q><span class="anchor">§{{ anchor }}</span></span>
+{%- endmacro %}
+
+{% macro outcome_chip(o) -%}
+<span class="b {{ {'pass':'met','fail':'bad','unknown':'warn'}[o] }}">{{ {'pass':'soddisfatto','fail':'non soddisfatto','unknown':'da verificare'}[o] }}</span>
+{%- endmacro %}
+
+{# criteria meter: graphite = met, amber = to check, red = not met (widths as SVG attributes: CSP allows no inline style) #}
+{% macro meter(m, width=360) -%}
+{%- set total = (m.pass + m.unknown + m.fail) or 1 -%}
+{%- set wp = width * m.pass / total -%}{%- set wu = width * m.unknown / total -%}{%- set wf = width * m.fail / total -%}
+<svg class="meter" viewBox="0 0 {{ width }} 6" preserveAspectRatio="none" role="img" aria-label="{{ m.pass }} criteri soddisfatti, {{ m.unknown }} da verificare, {{ m.fail }} non soddisfatti">
+  <rect class="bar-bg" x="0" y="0" width="{{ width }}" height="6" rx="3"/>
+  {%- if m.pass %}<rect class="bar-met" x="0" y="0" width="{{ '%.1f' % (wp - 1 if (m.unknown or m.fail) else wp) }}" height="6" rx="3"/>{% endif %}
+  {%- if m.unknown %}<rect class="bar-warn" x="{{ '%.1f' % wp }}" y="0" width="{{ '%.1f' % (wu - 1 if m.fail else wu) }}" height="6" rx="3"/>{% endif %}
+  {%- if m.fail %}<rect class="bar-bad" x="{{ '%.1f' % (wp + wu) }}" y="0" width="{{ '%.1f' % wf }}" height="6" rx="3"/>{% endif %}
+</svg>
+{%- endmacro %}
+
+{% macro initials(name) -%}
+<span class="initials" aria-hidden="true">{{ (name.split()[0][:1] ~ (name.split()[-1][:1] if name.split()|length > 1 else '')) | upper }}</span>
+{%- endmacro %}

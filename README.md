@@ -106,6 +106,12 @@ a work queue ([docs/DESIGN.md](docs/DESIGN.md)).
 "not eligible"; a condition dropped by the citation gate disappeared instead of blocking "likely"; a contested value
 could exclude a hire; non-ASCII CSRF tokens caused a 500).
 
+**End-to-end check of the live demo** ([scripts/e2e_check.py](scripts/e2e_check.py)), run against the deployed
+container behind its proxy: an anonymous visitor (every page, incentive, company, CSV and API), two consultants on the
+shared demo account (each one's decisions and audit log private to their session), an attacker (CSRF, XSS in notes,
+open redirects, CSV formulas, `nan`/`inf` rates, forged cookies, a dead session after logout), live questions, and the
+rate limits (a spoofed `X-Forwarded-For` does not reset them). 88/88, live questions 3/3, limits 3/3 (22.11.2026).
+
 **Mutation check:** each guarantee above is removed on purpose and a test must fail
 ([docs/mutation-results.json](docs/mutation-results.json)).
 
